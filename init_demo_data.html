@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>初始化演示数据 + 验证</title>
+<style>
+body{font-family:-apple-system,'Microsoft YaHei',sans-serif;background:#f0f2f5;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px}
+.card{background:#fff;border-radius:16px;padding:40px;box-shadow:0 4px 20px rgba(0,0,0,.1);text-align:center;max-width:500px;width:100%}
+h2{color:#667eea;margin-bottom:16px}
+p{color:#666;font-size:14px;line-height:1.8;margin-bottom:24px}
+.btn{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:14px 40px;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;transition:transform .1s;margin:5px}
+.btn:active{transform:scale(.95)}
+.btn2{background:linear-gradient(135deg,#51cf66,#20c997)}
+.success{background:#d4edda;color:#155724;padding:16px;border-radius:12px;margin-top:20px;display:none;line-height:2;text-align:left}
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{padding:6px 8px;text-align:left;border-bottom:1px solid #eee;font-size:13px}
+th{background:#f5f5f5;font-weight:600}
+</style>
+</head>
+<body>
+<div class="card">
+    <h2>🏥 血压守护 - 演示数据初始化</h2>
+    <p>点击按钮将自动创建：<br>用户 + 2 位父母 + 药物 + 服药记录 + 血压数据</p>
+    <button class="btn" onclick="doInit()">一键初始化</button>
+    <button class="btn btn2" onclick="verifyData()">验证数据</button>
+    <div id="verifyResult"></div>
+    <div class="success" id="result"></div>
+</div>
+
+<script>
+function doInit(){
+    try{
+        initData();
+    }catch(e){
+        alert('初始化失败：'+e.message+'\n'+e.stack);
+    }
+}
+
+function genId(){return Date.now()+Math.floor(Math.random()*10000)}
+function pad(n){return n<10?'0'+n:''+n}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function daysAgo(n){var d=new Date();d.setDate(d.getDate()-n);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+
+function initData(){
+    var td=todayStr();
+    
+    // 使用固定的 ID，方便验证
+    var uid=10001;
+    var p1=10010,p2=10011;
+    var m1=20001,m2=20002,m3=20003,m4=20004;
+    
+    var state={uid:uid,pid:p1,pname:'张大爷',parents:[
+        {id:p1,name:'张大爷',age:68,gender:'男'},
+        {id:p2,name:'李奶奶',age:65,gender:'女'}
+    ]};
+    localStorage.setItem('bp_app_state',JSON.stringify(state));
+    
+    var meds1=[
+        {id:m1,name:'硝苯地平',dosage:'1片',frequency:'twice',times:['08:00','18:00'],quantity:5},
+        {id:m2,name:'阿司匹林',dosage:'100mg',frequency:'once',times:['08:00'],quantity:3},
+        {id:m3,name:'氨氯地平',dosage:'5mg',frequency:'once',times:['20:00'],quantity:30}
+    ];
+    localStorage.setItem('bp_meds_'+p1,JSON.stringify(meds1));
+    
+    var meds2=[
+        {id:m4,name:'卡托普利',dosage:'12.5mg',frequency:'thrice',times:['07:00','12:00','19:00'],quantity:20}
+    ];
+    localStorage.setItem('bp_meds_'+p2,JSON.stringify(meds2));
+    
+    var logs1=[];
+    var j;
+    for(j=0;j<7;j++){
+        var date=daysAgo(j);
+        meds1.forEach(function(m){
+            m.times.forEach(function(t){
+                var status='pending';
+                if(j>0){var r=Math.random();status=r<0.7?'taken':(r<0.9?'missed':'pending')}
+                else if(t<'10:00')status='taken';
+                logs1.push({id:genId(),medId:m.id,medName:m.name,dosage:m.dosage,date:date,time:t,scheduled:date+' '+t,status:status,confirmedAt:status==='taken'?date+' '+t:null})
+            })
+        })
+    }
+    localStorage.setItem('bp_logs_'+p1,JSON.stringify(logs1));
+    
+    var logs2=[];
+    meds2.forEach(function(m){
+        m.times.forEach(function(t){
+            var status=t<'10:00'?'taken':'pending';
+            logs2.push({id:genId(),medId:m.id,medName:m.name,dosage:m.dosage,date:td,time:t,scheduled:td+' '+t,status:status,confirmedAt:status==='taken'?td+' '+t:null})
+        })
+    });
+    localStorage.setItem('bp_logs_'+p2,JSON.stringify(logs2));
+    
+    var bps1=[];
+    var k;
+    for(k=0;k<14;k++){
+        var date=daysAgo(k);
+        var h=k<7?8:16;
+        var mi=Math.floor(Math.random()*30);
+        bps1.push({id:genId(),systolic:135+Math.floor(Math.random()*20-10),diastolic:85+Math.floor(Math.random()*16-8),hr:68+Math.floor(Math.random()*16),note:k<3?'晨起':(k<6?'午饭后':'睡前'),time:date+' '+pad(h)+':'+pad(mi)})
+    }
+    bps1.sort(function(a,b){return a.time<b.time?1:-1});
+    localStorage.setItem('bp_data_'+p1,JSON.stringify(bps1));
+    
+    var bps2=[];
+    var l;
+    for(l=0;l<7;l++){
+        var date=daysAgo(l);
+        bps2.push({id:genId(),systolic:128+Math.floor(Math.random()*12-6),diastolic:78+Math.floor(Math.random()*10-5),hr:70+Math.floor(Math.random()*12),note:'晨起',time:date+' 08:'+pad(Math.floor(Math.random()*30))})
+    }
+    bps2.sort(function(a,b){return a.time<b.time?1:-1});
+    localStorage.setItem('bp_data_'+p2,JSON.stringify(bps2));
+    
+    var alerts1=[];
+    var missedLogs=logs1.filter(function(l){return l.status==='missed'});
+    missedLogs.forEach(function(l){
+        var lv=['warn','urgent','critical'][Math.floor(Math.random()*3)];
+        alerts1.push({id:genId(),logId:l.id,medName:l.medName,diff:lv==='critical'?45:(lv==='urgent'?30:15),level:lv,status:lv==='warn'?'active':'resolved',time:l.date+' 10:00:00'})
+    });
+    alerts1.push({id:genId(),logId:genId(),medName:'硝苯地平',diff:25,level:'urgent',status:'active',time:td+' 09:30:00'});
+    localStorage.setItem('bp_alerts_'+p1,JSON.stringify(alerts1));
+    
+    localStorage.setItem('bp_app_alerts',JSON.stringify({l1:10,l2:25,l3:40}));
+    localStorage.setItem('bp_push_enabled','0');
+    
+    // 显示结果
+    var r=document.getElementById('result');
+    r.style.display='block';
+    r.innerHTML='<strong>✅ 初始化成功！</strong><br><br><a href="app.html" style="color:#667eea;font-size:16px;font-weight:600">👉 点击打开 APP</a>';
+    
+    alert('✅ 初始化成功！\n\n👤 用户：小明\n👴 张大爷（3种药，14天血压）\n👵 李奶奶（1种药，7天血压）\n\n点击确定后验证数据或打开APP');
+}
+
+function verifyData(){
+    var c=document.getElementById('verifyResult');
+    var html='<div class="success" style="display:block">';
+    html+='<strong>📊 数据验证结果</strong><br><br>';
+    
+    // 验证 state
+    var stateStr=localStorage.getItem('bp_app_state');
+    if(stateStr){
+        var state=JSON.parse(stateStr);
+        html+='<strong>用户状态：</strong><br>';
+        html+='<table><tr><th>Key</th><th>Value</th></tr>';
+        html+='<tr><td>uid</td><td>'+state.uid+'</td></tr>';
+        html+='<tr><td>pid</td><td>'+state.pid+'</td></tr>';
+        html+='<tr><td>pname</td><td>'+state.pname+'</td></tr>';
+        html+='<tr><td>父母数</td><td>'+(state.parents?state.parents.length:0)+'</td></tr>';
+        if(state.parents){
+            state.parents.forEach(function(p){
+                html+='<tr><td>父母</td><td>ID='+p.id+' 姓名='+p.name+'</td></tr>';
+            });
+        }
+        html+='</table><br>';
+    }else{
+        html+='❌ 无用户状态数据<br><br>';
+    }
+    
+    // 验证张大爷数据
+    var p1=null;
+    if(stateStr){var s=JSON.parse(stateStr);if(s.parents)p1=s.parents[0].id}
+    if(p1){
+        html+='<strong>张大爷数据：</strong><br>';
+        var meds=JSON.parse(localStorage.getItem('bp_meds_'+p1)||'[]');
+        html+='<table><tr><th>药物</th><th>剂量</th><th>频次</th><th>时间</th><th>库存</th></tr>';
+        meds.forEach(function(m){html+='<tr><td>'+m.name+'</td><td>'+m.dosage+'</td><td>'+m.frequency+'</td><td>'+m.times.join(', ')+'</td><td>'+m.quantity+'</td></tr>'});
+        html+='</table><br>';
+        
+        var logs=JSON.parse(localStorage.getItem('bp_logs_'+p1)||'[]');
+        var td=todayStr();
+        var todayLogs=logs.filter(function(l){return l.date===td});
+        html+='服药记录：共'+logs.length+'条，今日'+todayLogs.length+'条<br><br>';
+        
+        var bps=JSON.parse(localStorage.getItem('bp_data_'+p1)||'[]');
+        html+='血压记录：共'+bps.length+'条<br><br>';
+        
+        var alerts=JSON.parse(localStorage.getItem('bp_alerts_'+p1)||'[]');
+        html+='预警记录：共'+alerts.length+'条<br>';
+    }
+    
+    html+='</div>';
+    c.innerHTML=html;
+}
+</script>
+</body>
+</html>

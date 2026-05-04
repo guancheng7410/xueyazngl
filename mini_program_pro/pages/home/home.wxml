@@ -1,0 +1,100 @@
+<view class="container">
+  <!-- 头部状态 -->
+  <view class="header-card">
+    <view class="header">
+      <view class="user-info">
+        <view class="avatar">{{currentParent.name}}</view>
+        <view class="user-detail">
+          <view class="name">{{currentParent.name}}</view>
+          <view class="relation">{{currentParent.relation}} · {{currentParent.age}}岁</view>
+        </view>
+      </view>
+      <view class="switch-btn" bindtap="showParentSelector">切换</view>
+    </view>
+  </view>
+
+  <!-- 统计卡片 -->
+  <view class="stats-row">
+    <view class="stat-card">
+      <view class="stat-num">{{todayMedCount}}</view>
+      <view class="stat-label">今日服药</view>
+    </view>
+    <view class="stat-card">
+      <view class="stat-num">{{completedCount}}</view>
+      <view class="stat-label">已完成</view>
+    </view>
+    <view class="stat-card">
+      <view class="stat-num">{{latestBp}}</view>
+      <view class="stat-label">最新血压</view>
+    </view>
+  </view>
+
+  <!-- 血压趋势图 -->
+  <view class="card">
+    <view class="card-header">
+      <view class="card-title">📈 血压趋势</view>
+      <view class="card-action" bindtap="goToBp">详情</view>
+    </view>
+    <view class="chart-container">
+      <canvas canvas-id="bpChart" class="bp-chart"></canvas>
+    </view>
+  </view>
+
+  <!-- 今日服药 -->
+  <view class="card">
+    <view class="card-header">
+      <view class="card-title">💊 今日服药计划</view>
+      <view class="card-action" bindtap="goToMeds">全部</view>
+    </view>
+    <view wx:if="{{todayMeds.length > 0}}">
+      <view class="med-item" wx:for="{{todayMeds}}" wx:key="id">
+        <view class="med-icon {{item.status === 'taken' ? 'green' : (item.status === 'missed' ? 'orange' : 'blue')}}">
+          {{item.status === 'taken' ? '✓' : (item.status === 'missed' ? '✗' : '⏰')}}
+        </view>
+        <view class="med-info">
+          <view class="med-name">{{item.medName}}</view>
+          <view class="med-time">{{item.time}} · {{item.dosage}}</view>
+        </view>
+        <button wx:if="{{item.status === 'pending'}}" class="btn btn-sm btn-success" bindtap="confirmMed" data-id="{{item.id}}">确认</button>
+      </view>
+    </view>
+    <view wx:else class="empty-state">
+      <view class="empty-icon">💊</view>
+      <view class="empty-text">暂无服药计划</view>
+    </view>
+  </view>
+
+  <!-- 预警 -->
+  <view class="card">
+    <view class="card-header">
+      <view class="card-title">🔔 预警中心</view>
+      <view class="card-action" bindtap="goToAlerts">
+        全部 <text wx:if="{{activeAlertCount > 0}}" class="badge">{{activeAlertCount}}</text>
+      </view>
+    </view>
+    <view wx:if="{{activeAlerts.length > 0}}">
+      <view class="alert-item" wx:for="{{activeAlerts}}" wx:key="id">
+        <view class="alert-icon {{item.level === 'critical' ? 'critical' : 'warn'}}">⚠️</view>
+        <view class="alert-info">
+          <view class="alert-title">{{item.medName}}</view>
+          <view class="alert-time">超时 {{item.diff}} 分钟</view>
+        </view>
+        <button class="btn btn-sm" bindtap="resolveAlert" data-id="{{item.id}}">处理</button>
+      </view>
+    </view>
+    <view wx:else class="empty-state">
+      <view class="empty-icon">✅</view>
+      <view class="empty-text">暂无预警</view>
+    </view>
+  </view>
+</view>
+
+<!-- 父母选择器 -->
+<action-sheet wx:if="{{showSelector}}" bindclose="hideParentSelector">
+  <block wx:for="{{parents}}" wx:key="id">
+    <action-sheet-item bindtap="switchParent" data-id="{{item.id}}">
+      {{item.name}} ({{item.relation}})
+    </action-sheet-item>
+  </block>
+  <action-sheet-cancel>取消</action-sheet-cancel>
+</action-sheet>

@@ -1,0 +1,38 @@
+{
+  "name": "blood-pressure-guardian-app",
+  "version": "2.0.0",
+  "description": "血压守护 - 智能服药提醒与家庭协同看护系统",
+  "main": "index.js",
+  "scripts": {
+    "dev": "npx cap serve",
+    "build": "npm run build:web && npm run sync",
+    "build:web": "echo 'Web build complete'",
+    "sync": "npx cap sync",
+    "open:android": "npx cap open android",
+    "open:ios": "npx cap open ios",
+    "run:android": "npx cap run android",
+    "run:ios": "npx cap run ios",
+    "add:android": "npx cap add android",
+    "add:ios": "npx cap add ios"
+  },
+  "keywords": ["blood-pressure", "medication", "reminder", "health"],
+  "author": "Blood Pressure Guardian Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@capacitor/cli": "^5.5.0",
+    "@capacitor/core": "^5.5.0",
+    "@capacitor/android": "^5.5.0",
+    "@capacitor/ios": "^5.5.0"
+  },
+  "dependencies": {
+    "@capacitor/app": "^5.0.0",
+    "@capacitor/status-bar": "^5.0.0",
+    "@capacitor/splash-screen": "^5.0.0",
+    "@capacitor/keyboard": "^5.0.0",
+    "@capacitor/push-notifications": "^5.0.0",
+    "@capacitor/local-notifications": "^5.0.0",
+    "@capacitor/preferences": "^5.0.0",
+    "@capacitor/share": "^5.0.0",
+    "@capacitor/filesystem": "^5.0.0"
+  }
+}

@@ -1,0 +1,22 @@
+<view class="container">
+  <view class="card" style="text-align:center;padding:48rpx">
+    <view class="avatar-large">{{currentParent.name}}</view>
+    <view class="profile-name">{{currentParent.name}}</view>
+    <view class="profile-role">{{currentParent.relation}} · {{currentParent.age}}岁</view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">数据管理</view>
+    <button class="btn" bindtap="loadDemoData">📋 加载演示数据</button>
+    <button class="btn btn-danger" bindtap="clearAllData">🗑️ 清除所有数据</button>
+  </view>
+
+  <view class="card">
+    <view class="card-title">关于</view>
+    <view class="about-info">
+      <view>版本：1.0.0 小程序</view>
+      <view>血压守护 - 智能服药提醒</view>
+      <view>支持离线使用，数据本地存储</view>
+    </view>
+  </view>
+</view>

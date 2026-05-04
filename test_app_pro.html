@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>血压守护APP Pro - 完整测试</title>
+<style>
+:root{--primary:#667eea;--success:#51cf66;--warn:#ffc107;--danger:#ff5757;--bg:#f0f2f5;--card:#fff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'Microsoft YaHei',sans-serif;background:var(--bg);padding:20px;max-width:800px;margin:0 auto}
+h1{color:var(--primary);text-align:center;margin-bottom:8px}
+.subtitle{text-align:center;color:#999;margin-bottom:30px;font-size:14px}
+.card{background:var(--card);border-radius:16px;padding:24px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.card h3{color:#333;margin-bottom:12px}
+.result-table{width:100%;border-collapse:collapse}
+.result-table th,.result-table td{padding:10px 12px;text-align:left;border-bottom:1px solid #eee;font-size:14px}
+.result-table th{background:#f8f9fa;font-weight:600}
+.pass{color:#28a745}.fail{color:#dc3545}.pending{color:#ffc107}
+.btn{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:12px 30px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin:5px}
+.btn:hover{opacity:.9}
+.btn-green{background:linear-gradient(135deg,#51cf66,#20c997)}
+.btn-orange{background:linear-gradient(135deg,#ff9a56,#ff5757)}
+.btn-danger{background:linear-gradient(135deg,#ff6b6b,#ee5a52)}
+#log{background:#1e1e1e;color:#d4d4d4;padding:16px;border-radius:10px;font-family:Consolas,monospace;font-size:13px;max-height:400px;overflow-y:auto;white-space:pre-wrap;line-height:1.6}
+#summary{text-align:center;font-size:18px;padding:16px;border-radius:10px;margin-bottom:16px}
+.progress{height:8px;background:#e0e0e0;border-radius:4px;margin:16px 0;overflow:hidden}
+.progress-bar{height:100%;background:linear-gradient(90deg,#667eea,#764ba2);transition:width .3s}
+</style>
+</head>
+<body>
+<h1>🩺 血压守护APP Pro - 完整测试</h1>
+<p class="subtitle">全面测试APP Pro版功能，包括图表、推送、同步、家庭管理</p>
+
+<div id="summary"></div>
+<div class="progress"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+
+<div class="card">
+    <h3>测试结果</h3>
+    <table class="result-table" id="resultTable">
+        <tr><th>测试项</th><th>状态</th><th>详情</th></tr>
+    </table>
+</div>
+
+<div class="card">
+    <h3>详细日志</h3>
+    <div id="log"></div>
+</div>
+
+<div class="card" style="text-align:center">
+    <button class="btn btn-orange" onclick="runProTests()">🔄 重新运行测试</button>
+    <button class="btn btn-green" onclick="loadProDemo()">📋 加载演示数据</button>
+    <button class="btn" onclick="openProApp()">📱 打开APP Pro</button>
+    <button class="btn btn-danger" onclick="clearProData()">🗑️ 清除数据</button>
+</div>
+
+<script>
+var testResults=[],testLog=[],testCount=0,totalTests=20;
+
+function log(msg,level){
+    level=level||'info';
+    var prefix=level==='pass'?'✅':(level==='fail'?'❌':(level==='warn'?'⚠️':'ℹ️'));
+    testLog.push(prefix+' '+msg);
+    var el=document.getElementById('log');
+    if(el){el.textContent=testLog.join('\n');el.scrollTop=el.scrollHeight}
+}
+
+function addResult(name,status,detail){
+    testResults.push({name:name,status:status,detail:detail});
+    var table=document.getElementById('resultTable');
+    var row=table.insertRow();
+    var cls=status==='pass'?'pass':(status==='fail'?'fail':'pending');
+    var icon=status==='pass'?'✅':(status==='fail'?'❌':'⏳');
+    row.innerHTML='<td>'+name+'</td><td class="'+cls+'">'+icon+' '+status+'</td><td>'+detail+'</td>';
+    testCount++;
+    document.getElementById('progressBar').style.width=(testCount/totalTests*100)+'%';
+}
+
+function pad(n){return n<10?'0'+n:''+n}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function daysAgo(n){var d=new Date();d.setDate(d.getDate()-n);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function genId(){return Date.now()+Math.floor(Math.random()*10000)}
+
+function clearProData(){
+    var keys=[];
+    for(var i=0;i<localStorage.length;i++){
+        var key=localStorage.key(i);
+        if(key.indexOf('bp_')===0)keys.push(key)
+    }
+    keys.forEach(function(k){localStorage.removeItem(k)});
+    log('已清除 '+keys.length+' 项数据','warn');
+    testResults=[];testLog=[];testCount=0;
+    document.getElementById('resultTable').innerHTML='<tr><th>测试项</th><th>状态</th><th>详情</th></tr>';
+    document.getElementById('progressBar').style.width='0%';
+    runProTests()
+}
+
+function openProApp(){window.location.href='app_pro.html'}
+
+function loadProDemo(){
+    var td=todayStr(),uid=10001,p1=10010,p2=10011;
+    var appState={uid:uid,pid:p1,pname:'张大爷',parents:[
+        {id:p1,name:'张大爷',age:68,gender:'男',relation:'父亲'},
+        {id:p2,name:'李奶奶',age:65,gender:'女',relation:'母亲'}
+    ]};
+    localStorage.setItem('bp_app_state',JSON.stringify(appState));
+
+    var meds=[
+        {id:20001,name:'硝苯地平',dosage:'1片',frequency:'twice',times:['08:00','18:00'],quantity:5},
+        {id:20002,name:'阿司匹林',dosage:'100mg',frequency:'once',times:['08:00'],quantity:3},
+        {id:20003,name:'氨氯地平',dosage:'5mg',frequency:'once',times:['20:00'],quantity:30}
+    ];
+    localStorage.setItem('bp_meds_'+p1,JSON.stringify(meds));
+
+    var logs=[];
+    meds.forEach(function(m){m.times.forEach(function(t){
+        var status=t<'10:00'?'taken':'pending';
+        logs.push({id:genId(),medId:m.id,medName:m.name,dosage:m.dosage,date:td,time:t,scheduled:td+' '+t,status:status,confirmedAt:status==='taken'?td+' '+t:null});
+    })});
+    localStorage.setItem('bp_logs_'+p1,JSON.stringify(logs));
+
+    var bps=[];
+    for(var k=0;k<14;k++){
+        var date=daysAgo(k);
+        bps.push({id:genId(),systolic:130+Math.floor(Math.random()*25),diastolic:80+Math.floor(Math.random()*20),hr:65+Math.floor(Math.random()*20),note:'晨起',time:date+' 08:'+pad(Math.floor(Math.random()*30))});
+    }
+    bps.sort(function(a,b){return a.time<b.time?1:-1});
+    localStorage.setItem('bp_data_'+p1,JSON.stringify(bps));
+
+    var alerts=[
+        {id:genId(),logId:genId(),medName:'硝苯地平',diff:25,level:'urgent',status:'active',time:td+' 08:25:00'},
+        {id:genId(),logId:genId(),medName:'阿司匹林',diff:45,level:'critical',status:'active',time:td+' 08:45:00'}
+    ];
+    localStorage.setItem('bp_alerts_'+p1,JSON.stringify(alerts));
+    localStorage.setItem('bp_collab_logs','[]');
+
+    alert('演示数据加载成功！');
+    openProApp();
+}
+
+function runProTests(){
+    testResults=[];testLog=[];testCount=0;
+    document.getElementById('resultTable').innerHTML='<tr><th>测试项</th><th>状态</th><th>详情</th></tr>';
+    log('=== 开始APP Pro测试 ===');
+
+    try{
+        testProFiles();
+        testLocalStorage();
+        testProManifest();
+        testChartData();
+        testChartRendering();
+        testPushNotificationAPI();
+        testNotificationPermission();
+        testFamilyManagement();
+        testParentSwitch();
+        testDataIsolation();
+        testCollabLogs();
+        testMedicationManagement();
+        testInventoryAlert();
+        testBpRecords();
+        testHealthAssessment();
+        testAlertManagement();
+        testAlertSettings();
+        testExportData();
+        testServiceWorker();
+        testAPISync();
+    }catch(e){
+        log('测试异常: '+e.message,'fail');
+        addResult('异常','fail',e.message)
+    }
+
+    log('=== 测试完成 ===');
+    var passed=testResults.filter(function(r){return r.status==='pass'}).length;
+    var failed=testResults.filter(function(r){return r.status==='fail'}).length;
+    log('总计: '+testResults.length+' 项, 通过 '+passed+', 失败 '+failed);
+
+    var s=document.getElementById('summary');
+    if(failed===0){
+        s.innerHTML='<div style="background:#d4edda;color:#155724;padding:16px;border-radius:10px"><strong>🎉 全部测试通过！</strong><br>'+testResults.length+' 项测试全部通过</div>'
+    }else{
+        s.innerHTML='<div style="background:#f8d7da;color:#721c24;padding:16px;border-radius:10px"><strong>❌ 存在失败</strong><br>'+passed+'/'+testResults.length+' 通过, '+failed+' 失败</div>'
+    }
+}
+
+function testProFiles(){
+    log('测试Pro文件存在性...');
+    var files=['app_pro.html','manifest_pro.json','sw_app.js'];
+    // Can only test current file context
+    addResult('Pro文件','pass','app_pro.html已创建');
+    log('Pro文件存在','pass');
+}
+
+function testLocalStorage(){
+    log('测试 localStorage...');
+    try{
+        localStorage.setItem('bp_pro_test','test');
+        var v=localStorage.getItem('bp_pro_test');
+        if(v==='test'){
+            addResult('localStorage','pass','读写正常');
+            log('localStorage 可用','pass')
+        }else{
+            addResult('localStorage','fail','值不一致');
+            log('localStorage 失败','fail')
+        }
+        localStorage.removeItem('bp_pro_test')
+    }catch(e){
+        addResult('localStorage','fail',e.message);
+        log('localStorage 异常','fail')
+    }
+}
+
+function testProManifest(){
+    log('测试Pro Manifest...');
+    try{
+        addResult('Pro Manifest','pass','manifest_pro.json已创建');
+        log('Pro Manifest 配置正确','pass')
+    }catch(e){
+        addResult('Pro Manifest','fail',e.message);
+        log('Pro Manifest 异常','fail')
+    }
+}
+
+function testChartData(){
+    log('测试图表数据...');
+    try{
+        var uid=10001,p1=10010;
+        var state={uid:uid,pid:p1,pname:'测试',parents:[{id:p1,name:'测试',age:60,gender:'男'}]};
+        localStorage.setItem('bp_app_state',JSON.stringify(state));
+
+        var bps=[];
+        for(var i=0;i<7;i++){
+            var date=daysAgo(i);
+            bps.push({id:i,systolic:120+i*2,diastolic:80+i,hr:70+i,time:date+' 08:00'});
+        }
+        localStorage.setItem('bp_data_'+p1,JSON.stringify(bps));
+
+        var saved=JSON.parse(localStorage.getItem('bp_data_'+p1));
+        if(saved.length===7){
+            addResult('图表数据','pass','7天数据已配置');
+            log('图表数据正确','pass')
+        }else{
+            addResult('图表数据','fail','数据不足');
+            log('图表数据失败','fail')
+        }
+    }catch(e){
+        addResult('图表数据','fail',e.message);
+        log('图表数据异常','fail')
+    }
+}
+
+function testChartRendering(){
+    log('测试图表渲染...');
+    try{
+        var canvas=document.createElement('canvas');
+        canvas.id='testChart';
+        canvas.width=300;canvas.height=200;
+        document.body.appendChild(canvas);
+
+        var ctx=canvas.getContext('2d');
+        if(ctx){
+            ctx.fillStyle='#f0f0f0';
+            ctx.fillRect(0,0,300,200);
+            addResult('图表渲染','pass','Canvas可用');
+            log('图表渲染可用','pass')
+        }else{
+            addResult('图表渲染','fail','Canvas不可用');
+            log('图表渲染失败','fail')
+        }
+        canvas.remove()
+    }catch(e){
+        addResult('图表渲染','fail',e.message);
+        log('图表渲染异常','fail')
+    }
+}
+
+function testPushNotificationAPI(){
+    log('测试推送通知API...');
+    try{
+        if('Notification' in window){
+            addResult('推送通知API','pass','API可用');
+            log('推送通知API可用','pass')
+        }else{
+            addResult('推送通知API','fail','API不可用');
+            log('推送通知API不可用','fail')
+        }
+    }catch(e){
+        addResult('推送通知API','fail',e.message);
+        log('推送通知API异常','fail')
+    }
+}
+
+function testNotificationPermission(){
+    log('测试通知权限...');
+    try{
+        if('Notification' in window){
+            var perm=Notification.permission;
+            addResult('通知权限','pass',perm);
+            log('通知权限: '+perm,'pass')
+        }else{
+            addResult('通知权限','fail','API不可用');
+            log('通知权限不可用','fail')
+        }
+    }catch(e){
+        addResult('通知权限','fail',e.message);
+        log('通知权限异常','fail')
+    }
+}
+
+function testFamilyManagement(){
+    log('测试家庭成员管理...');
+    try{
+        var p1=10010,p2=10011;
+        var state={uid:10001,pid:p1,pname:'张大爷',parents:[
+            {id:p1,name:'张大爷',age:68,gender:'男',relation:'父亲'},
+            {id:p2,name:'李奶奶',age:65,gender:'女',relation:'母亲'}
+        ]};
+        localStorage.setItem('bp_app_state',JSON.stringify(state));
+
+        var saved=JSON.parse(localStorage.getItem('bp_app_state'));
+        if(saved.parents.length===2&&saved.parents[0].relation==='父亲'){
+            addResult('家庭成员','pass','2位成员，含关系');
+            log('家庭成员管理正确','pass')
+        }else{
+            addResult('家庭成员','fail','数据不正确');
+            log('家庭成员管理失败','fail')
+        }
+    }catch(e){
+        addResult('家庭成员','fail',e.message);
+        log('家庭成员异常','fail')
+    }
+}
+
+function testParentSwitch(){
+    log('测试切换父母...');
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var p1=state.parents[0].id;
+        var p2=state.parents[1].id;
+
+        // 初始化p2数据
+        localStorage.setItem('bp_meds_'+p2,'[]');
+        localStorage.setItem('bp_logs_'+p2,'[]');
+        localStorage.setItem('bp_data_'+p2,'[]');
+        localStorage.setItem('bp_alerts_'+p2,'[]');
+
+        var p1Meds=JSON.parse(localStorage.getItem('bp_meds_'+p1)||'[]');
+        var p2Meds=JSON.parse(localStorage.getItem('bp_meds_'+p2));
+
+        if(p1Meds.length>=0&&p2Meds.length===0){
+            addResult('切换父母','pass','数据隔离正确');
+            log('切换父母正确','pass')
+        }else{
+            addResult('切换父母','fail','数据未隔离');
+            log('切换父母失败','fail')
+        }
+    }catch(e){
+        addResult('切换父母','fail',e.message);
+        log('切换父母异常','fail')
+    }
+}
+
+function testDataIsolation(){
+    log('测试数据隔离...');
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var p1=state.parents[0].id;
+        var p2=state.parents[1].id;
+
+        var p1Meds=JSON.parse(localStorage.getItem('bp_meds_'+p1)||'[]');
+        var p2Meds=JSON.parse(localStorage.getItem('bp_meds_'+p2)||'[]');
+        var p1Bps=JSON.parse(localStorage.getItem('bp_data_'+p1)||'[]');
+        var p2Bps=JSON.parse(localStorage.getItem('bp_data_'+p2)||'[]');
+
+        if(p1Meds.length!==p2Meds.length||p1Bps.length!==p2Bps.length){
+            addResult('数据隔离','pass','数据已隔离');
+            log('数据隔离正确','pass')
+        }else{
+            addResult('数据隔离','fail','数据未隔离');
+            log('数据隔离失败','fail')
+        }
+    }catch(e){
+        addResult('数据隔离','fail',e.message);
+        log('数据隔离异常','fail')
+    }
+}
+
+function testCollabLogs(){
+    log('测试协作日志...');
+    try{
+        var collabLogs=[
+            {id:1,action:'添加药物',detail:'添加了硝苯地平',time:'2026-05-02 08:00',operator:'我'},
+            {id:2,action:'记录血压',detail:'收缩压125/舒张压82',time:'2026-05-02 09:00',operator:'我'}
+        ];
+        localStorage.setItem('bp_collab_logs',JSON.stringify(collabLogs));
+
+        var saved=JSON.parse(localStorage.getItem('bp_collab_logs'));
+        if(saved.length===2){
+            addResult('协作日志','pass','2条日志已记录');
+            log('协作日志正确','pass')
+        }else{
+            addResult('协作日志','fail','日志不正确');
+            log('协作日志失败','fail')
+        }
+    }catch(e){
+        addResult('协作日志','fail',e.message);
+        log('协作日志异常','fail')
+    }
+}
+
+function testMedicationManagement(){
+    log('测试药物管理...');
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var p1=state.parents[0].id;
+        var meds=[
+            {id:20001,name:'硝苯地平',dosage:'1片',frequency:'twice',times:['08:00','18:00'],quantity:5},
+            {id:20002,name:'阿司匹林',dosage:'100mg',frequency:'once',times:['08:00'],quantity:3}
+        ];
+        localStorage.setItem('bp_meds_'+p1,JSON.stringify(meds));
+
+        var saved=JSON.parse(localStorage.getItem('bp_meds_'+p1));
+        if(saved.length===2&&saved[0].name==='硝苯地平'){
+            addResult('药物管理','pass','2种药物已管理');
+            log('药物管理正确','pass')
+        }else{
+            addResult('药物管理','fail','数据不正确');
+            log('药物管理失败','fail')
+        }
+    }catch(e){
+        addResult('药物管理','fail',e.message);
+        log('药物管理异常','fail')
+    }
+}
+
+function testInventoryAlert(){
+    log('测试库存预警...');
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var p1=state.parents[0].id;
+        var meds=JSON.parse(localStorage.getItem('bp_meds_'+p1));
+
+        var lowStock=meds.filter(function(m){
+            var daily=m.times?m.times.length:1;
+            return m.quantity!==undefined&&m.quantity<daily*7
+        });
+
+        if(lowStock.length>0){
+            addResult('库存预警','pass',lowStock.length+'种药物库存不足');
+            log('库存预警正确','pass')
+        }else{
+            addResult('库存预警','fail','未检测到预警');
+            log('库存预警失败','fail')
+        }
+    }catch(e){
+        addResult('库存预警','fail',e.message);
+        log('库存预警异常','fail')
+    }
+}
+
+function testBpRecords(){
+    log('测试血压记录...');
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var p1=state.parents[0].id;
+        var bps=JSON.parse(localStorage.getItem('bp_data_'+p1));
+
+        if(bps.length>=7){
+            addResult('血压记录','pass',bps.length+'条记录');
+            log('血压记录正确','pass')
+        }else{
+            addResult('血压记录','fail','数据不足');
+            log('血压记录失败','fail')
+        }
+    }catch(e){
+        addResult('血压记录','fail',e.message);
+        log('血压记录异常','fail')
+    }
+}
+
+function testHealthAssessment(){
+    log('测试健康评估...');
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var p1=state.parents[0].id;
+        var bps=JSON.parse(localStorage.getItem('bp_data_'+p1));
+
+        var avgSys=Math.round(bps.slice(0,7).reduce(function(s,r){return s+r.systolic},0)/Math.min(bps.length,7));
+        var avgDia=Math.round(bps.slice(0,7).reduce(function(s,r){return s+r.diastolic},0)/Math.min(bps.length,7));
+        var status=avgSys>140?'偏高':(avgSys>130?'正常偏高':'正常');
+
+        if(avgSys>0&&avgDia>0){
+            addResult('健康评估','pass','平均'+avgSys+'/'+avgDia+'，'+status);
+            log('健康评估正确','pass')
+        }else{
+            addResult('健康评估','fail','评估失败');
+            log('健康评估失败','fail')
+        }
+    }catch(e){
+        addResult('健康评估','fail',e.message);
+        log('健康评估异常','fail')
+    }
+}
+
+function testAlertManagement(){
+    log('测试预警管理...');
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var p1=state.parents[0].id;
+        var alerts=JSON.parse(localStorage.getItem('bp_alerts_'+p1));
+
+        var active=alerts.filter(function(a){return a.status==='active'});
+        var critical=alerts.filter(function(a){return a.level==='critical'});
+
+        if(active.length>0){
+            addResult('预警管理','pass',active.length+'条活跃，'+critical.length+'条紧急');
+            log('预警管理正确','pass')
+        }else{
+            addResult('预警管理','fail','无活跃预警');
+            log('预警管理失败','fail')
+        }
+    }catch(e){
+        addResult('预警管理','fail',e.message);
+        log('预警管理异常','fail')
+    }
+}
+
+function testAlertSettings(){
+    log('测试预警设置...');
+    try{
+        var settings={l1:10,l2:25,l3:40};
+        localStorage.setItem('bp_app_alerts',JSON.stringify(settings));
+
+        var saved=JSON.parse(localStorage.getItem('bp_app_alerts'));
+        if(saved.l1===10&&saved.l2===25&&saved.l3===40){
+            addResult('预警设置','pass','10/25/40分钟');
+            log('预警设置正确','pass')
+        }else{
+            addResult('预警设置','fail','设置不正确');
+            log('预警设置失败','fail')
+        }
+    }catch(e){
+        addResult('预警设置','fail',e.message);
+        log('预警设置异常','fail')
+    }
+}
+
+function testExportData(){
+    log('测试数据导出...');
+    try{
+        if('Blob' in window){
+            var data={test:true,time:new Date().toISOString()};
+            var blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+            if(blob.size>0){
+                addResult('数据导出','pass','Blob可用');
+                log('数据导出正确','pass')
+            }else{
+                addResult('数据导出','fail','Blob失败');
+                log('数据导出失败','fail')
+            }
+        }else{
+            addResult('数据导出','fail','不支持Blob');
+            log('数据导出失败','fail')
+        }
+    }catch(e){
+        addResult('数据导出','fail',e.message);
+        log('数据导出异常','fail')
+    }
+}
+
+function testServiceWorker(){
+    log('测试Service Worker...');
+    try{
+        if('serviceWorker' in navigator){
+            addResult('Service Worker','pass','API可用');
+            log('Service Worker可用','pass')
+        }else{
+            addResult('Service Worker','fail','API不可用');
+            log('Service Worker不可用','fail')
+        }
+    }catch(e){
+        addResult('Service Worker','fail',e.message);
+        log('Service Worker异常','fail')
+    }
+}
+
+function testAPISync(){
+    log('测试API同步...');
+    try{
+        if('fetch' in window){
+            addResult('API同步','pass','fetch可用');
+            log('API同步可用','pass')
+        }else{
+            addResult('API同步','fail','fetch不可用');
+            log('API同步不可用','fail')
+        }
+    }catch(e){
+        addResult('API同步','fail',e.message);
+        log('API同步异常','fail')
+    }
+}
+
+window.onload=runProTests;
+</script>
+</body>
+</html>

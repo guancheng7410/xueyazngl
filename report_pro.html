@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>血压守护 - 数据报告</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<style>
+:root{--primary:#667eea;--success:#51cf66;--warn:#ffc107;--danger:#ff5757;--bg:#f0f2f5;--card:#fff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'Microsoft YaHei',sans-serif;background:#fff;color:#333;padding:40px;max-width:800px;margin:0 auto}
+h1{text-align:center;color:var(--primary);margin-bottom:8px;font-size:28px}
+.subtitle{text-align:center;color:#999;margin-bottom:30px;font-size:14px}
+.section{margin-bottom:40px}
+.section-title{font-size:18px;font-weight:600;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--primary)}
+.chart-container{width:100%;height:300px;margin:16px 0}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:20px 0}
+.stat-card{background:var(--bg);border-radius:12px;padding:20px;text-align:center}
+.stat-num{font-size:32px;font-weight:700;color:var(--primary)}
+.stat-label{font-size:12px;color:#999;margin-top:4px}
+.info-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:20px 0}
+.info-item{background:var(--bg);border-radius:12px;padding:16px}
+.info-label{font-size:12px;color:#999;margin-bottom:4px}
+.info-value{font-size:16px;font-weight:600}
+.footer{text-align:center;margin-top:40px;padding-top:20px;border-top:1px solid #eee;color:#999;font-size:12px}
+.btn{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:12px 24px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin:8px}
+.btn-green{background:linear-gradient(135deg,#51cf66,#20c997)}
+.actions{text-align:center;margin:20px 0}
+table{width:100%;border-collapse:collapse;margin:16px 0}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #eee;font-size:14px}
+th{background:#f8f9fa;font-weight:600}
+.tag{display:inline-block;padding:4px 8px;border-radius:6px;font-size:11px;margin-right:4px}
+.tag-green{background:#e8f5e9;color:#388e3c}
+.tag-orange{background:#fff3e0;color:#f57c00}
+.tag-red{background:#ffebee;color:#d32f2f}
+</style>
+</head>
+<body>
+<div id="report">
+    <h1>🩺 血压守护 - 健康报告</h1>
+    <p class="subtitle" id="reportDate">报告日期：</p>
+
+    <div class="section">
+        <div class="section-title">📊 数据概览</div>
+        <div class="stats-row" id="statsRow"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">📈 血压趋势图</div>
+        <div id="bpChart" class="chart-container"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">🩺 血压分布</div>
+        <div id="bpDistChart" class="chart-container" style="height:250px"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">💊 服药统计</div>
+        <div id="medChart" class="chart-container" style="height:250px"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">📋 血压记录详情</div>
+        <table id="bpTable">
+            <thead><tr><th>日期</th><th>收缩压</th><th>舒张压</th><th>心率</th><th>状态</th><th>备注</th></tr></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">📊 健康评估</div>
+        <div class="info-grid" id="healthGrid"></div>
+    </div>
+
+    <div class="footer">
+        <p>血压守护 Pro · 智能服药提醒与家庭协同看护系统</p>
+        <p>本报告由系统自动生成，仅供参考</p>
+    </div>
+</div>
+
+<div class="actions" data-html2canvas-ignore>
+    <button class="btn" onclick="generatePDF()">📄 导出PDF报告</button>
+    <button class="btn btn-green" onclick="generateImage()">🖼️ 导出图片</button>
+    <button class="btn" onclick="window.history.back()">← 返回</button>
+</div>
+
+<script>
+var appState=JSON.parse(localStorage.getItem('bp_app_state')||'{"pid":null}');
+var pid=appState.pid;
+var meds=JSON.parse(localStorage.getItem('bp_meds_'+pid)||'[]');
+var logs=JSON.parse(localStorage.getItem('bp_logs_'+pid)||'[]');
+var bps=JSON.parse(localStorage.getItem('bp_data_'+pid)||'[]').sort(function(a,b){return a.time<b.time?-1:1});
+var alerts=JSON.parse(localStorage.getItem('bp_alerts_'+pid)||'[]');
+
+function pad(n){return n<10?'0'+n:''+n}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+
+function init(){
+    document.getElementById('reportDate').textContent='报告日期：'+todayStr()+' · '+appState.pname;
+
+    // Stats
+    var todayLogs=logs.filter(function(l){return l.date===todayStr()});
+    var takenCount=todayLogs.filter(function(l){return l.status==='taken'}).length;
+    var lowStock=meds.filter(function(m){return m.quantity!==undefined&&m.quantity<(m.times?m.times.length:1)*7}).length;
+    var activeAlerts=alerts.filter(function(a){return a.status==='active'}).length;
+
+    document.getElementById('statsRow').innerHTML=
+        '<div class="stat-card"><div class="stat-num">'+bps.length+'</div><div class="stat-label">血压记录</div></div>'+
+        '<div class="stat-card"><div class="stat-num">'+meds.length+'</div><div class="stat-label">药物种类</div></div>'+
+        '<div class="stat-card"><div class="stat-num">'+takenCount+'/'+todayLogs.length+'</div><div class="stat-label">今日服药</div></div>'+
+        '<div class="stat-card"><div class="stat-num">'+activeAlerts+'</div><div class="stat-label">活跃预警</div></div>';
+
+    // BP Trend Chart (ECharts)
+    var bpChart=echarts.init(document.getElementById('bpChart'));
+    var last30=bps.slice(-30).sort(function(a,b){return a.time<b.time?-1:1});
+    bpChart.setOption({
+        tooltip:{trigger:'axis'},
+        legend:{data:['收缩压','舒张压','心率'],bottom:0},
+        grid:{top:30,right:20,bottom:60,left:50},
+        xAxis:{type:'category',data:last30.map(function(r){return r.time.split(' ')[0]}),axisLabel:{rotate:45,fontSize:10}},
+        yAxis:[{type:'value',name:'mmHg',min:60,max:200},{type:'value',name:'次/分',min:40,max:120}],
+        series:[
+            {name:'收缩压',type:'line',data:last30.map(function(r){return r.systolic}),smooth:true,lineStyle:{width:3},itemStyle:{color:'#ff5757'}},
+            {name:'舒张压',type:'line',data:last30.map(function(r){return r.diastolic}),smooth:true,lineStyle:{width:3},itemStyle:{color:'#2196f3'}},
+            {name:'心率',type:'line',yAxisIndex:1,data:last30.map(function(r){return r.hr}),smooth:true,lineStyle:{width:2,type:'dashed'},itemStyle:{color:'#ffc107'}}
+        ]
+    });
+
+    // BP Distribution
+    var bpDistChart=echarts.init(document.getElementById('bpDistChart'));
+    var normal=bps.filter(function(r){return r.systolic<=130&&r.diastolic<=80}).length;
+    var highNormal=bps.filter(function(r){return r.systolic>130&&r.systolic<=140}).length;
+    var high=bps.filter(function(r){return r.systolic>140}).length;
+    bpDistChart.setOption({
+        tooltip:{trigger:'item'},
+        series:[{
+            type:'pie',radius:['40%','70%'],
+            data:[
+                {value:normal,name:'正常',itemStyle:{color:'#51cf66'}},
+                {value:highNormal,name:'正常偏高',itemStyle:{color:'#ffc107'}},
+                {value:high,name:'偏高',itemStyle:{color:'#ff5757'}}
+            ],
+            label:{formatter:'{b}: {c}次 ({d}%)'}
+        }]
+    });
+
+    // Medication Chart
+    var medChart=echarts.init(document.getElementById('medChart'));
+    medChart.setOption({
+        tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
+        grid:{top:30,right:20,bottom:60,left:50},
+        xAxis:{type:'category',data:meds.map(function(m){return m.name})},
+        yAxis:{type:'value',name:'数量'},
+        series:[{
+            type:'bar',
+            data:meds.map(function(m){
+                var daily=m.times?m.times.length:1;
+                var daysLeft=m.quantity!==undefined?Math.floor(m.quantity/daily):0;
+                return{value:m.quantity,name:m.name,itemStyle:{color:daysLeft<7?'#ff5757':'#667eea'}};
+            }),
+            label:{show:true,position:'top',formatter:'{c}片'}
+        }]
+    });
+
+    // BP Table
+    var tbody=document.querySelector('#bpTable tbody');
+    var html='';
+    bps.slice(-10).reverse().forEach(function(r){
+        var status=r.systolic>140?'<span class="tag tag-red">偏高</span>':(r.systolic>130?'<span class="tag tag-orange">正常偏高</span>':'<span class="tag tag-green">正常</span>');
+        html+='<tr><td>'+r.time.split(' ')[0]+'</td><td>'+r.systolic+'</td><td>'+r.diastolic+'</td><td>'+r.hr+'</td><td>'+status+'</td><td>'+(r.note||'-')+'</td></tr>';
+    });
+    tbody.innerHTML=html;
+
+    // Health Assessment
+    var avgSys=0,avgDia=0,avgHr=0;
+    if(bps.length>0){
+        var slice=bps.slice(-7);
+        avgSys=Math.round(slice.reduce(function(s,r){return s+r.systolic},0)/slice.length);
+        avgDia=Math.round(slice.reduce(function(s,r){return s+r.diastolic},0)/slice.length);
+        avgHr=Math.round(slice.reduce(function(s,r){return s+r.hr},0)/slice.length);
+    }
+    var status=avgSys>140?'偏高':(avgSys>130?'正常偏高':'正常');
+    var statusColor=avgSys>140?'#ff5757':(avgSys>130?'#ffc107':'#51cf66');
+    document.getElementById('healthGrid').innerHTML=
+        '<div class="info-item"><div class="info-label">平均血压</div><div class="info-value" style="color:'+statusColor+'">'+avgSys+'/'+avgDia+' mmHg</div></div>'+
+        '<div class="info-item"><div class="info-label">平均心率</div><div class="info-value">'+avgHr+' 次/分</div></div>'+
+        '<div class="info-item"><div class="info-label">健康状态</div><div class="info-value" style="color:'+statusColor+'">'+status+'</div></div>'+
+        '<div class="info-item"><div class="info-label">记录天数</div><div class="info-value">'+bps.length+' 天</div></div>';
+
+    window.addEventListener('resize',function(){
+        bpChart.resize();bpDistChart.resize();medChart.resize();
+    });
+}
+
+function generatePDF(){
+    var btn=event.target;
+    btn.textContent='⏳ 生成中...';
+    btn.disabled=true;
+
+    html2canvas(document.getElementById('report'),{scale:2,useCORS:true}).then(function(canvas){
+        var pdf=new jspdf.jsPDF('p','mm','a4');
+        var imgData=canvas.toDataURL('image/png');
+        var pdfWidth=pdf.internal.pageSize.getWidth();
+        var pdfHeight=pdf.internal.pageSize.getHeight();
+        var imgWidth=pdfWidth-20;
+        var imgHeight=(canvas.height*imgWidth)/canvas.width;
+        var heightLeft=imgHeight;
+        var position=10;
+
+        pdf.addImage(imgData,'PNG',10,position,imgWidth,imgHeight);
+        heightLeft-=pdfHeight-20;
+
+        while(heightLeft>0){
+            position=heightLeft-imgHeight+10;
+            pdf.addPage();
+            pdf.addImage(imgData,'PNG',10,position,imgWidth,imgHeight);
+            heightLeft-=pdfHeight-20;
+        }
+
+        pdf.save('bp_report_'+todayStr()+'.pdf');
+        btn.textContent='📄 导出PDF报告';
+        btn.disabled=false;
+    }).catch(function(e){
+        alert('生成PDF失败：'+e.message);
+        btn.textContent='📄 导出PDF报告';
+        btn.disabled=false;
+    });
+}
+
+function generateImage(){
+    var btn=event.target;
+    btn.textContent='⏳ 生成中...';
+    btn.disabled=true;
+
+    html2canvas(document.getElementById('report'),{scale:2,useCORS:true}).then(function(canvas){
+        var link=document.createElement('a');
+        link.download='bp_report_'+todayStr()+'.png';
+        link.href=canvas.toDataURL('image/png');
+        link.click();
+        btn.textContent='🖼️ 导出图片';
+        btn.disabled=false;
+    }).catch(function(e){
+        alert('生成图片失败：'+e.message);
+        btn.textContent='🖼️ 导出图片';
+        btn.disabled=false;
+    });
+}
+
+window.onload=init;
+</script>
+</body>
+</html>

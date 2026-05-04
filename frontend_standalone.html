@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>血压守护 - 智能服药提醒系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        h1 { color: white; text-align: center; margin-bottom: 30px; font-size: 2.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.2); }
+        .card { background: white; border-radius: 15px; padding: 25px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .card h2 { color: #333; margin-bottom: 15px; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #333; font-weight: 500; }
+        input, select { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; transition: border-color 0.3s; }
+        input:focus, select:focus { outline: none; border-color: #667eea; }
+        button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 16px; cursor: pointer; transition: transform 0.2s; margin: 5px; }
+        button:hover { transform: translateY(-2px); }
+        button.danger { background: #ff6b6b; }
+        button.confirm { background: #51cf66; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; }
+        .stat-item { text-align: center; padding: 15px; background: #f5f7ff; border-radius: 10px; }
+        .stat-value { font-size: 2em; font-weight: bold; color: #667eea; }
+        .stat-label { color: #666; font-size: 0.9em; }
+        .record-list { max-height: 400px; overflow-y: auto; }
+        .pill-list { max-height: 300px; overflow-y: auto; }
+        .pill-item { padding: 15px; background: #f9f9f9; border-radius: 8px; margin-bottom: 10px; }
+        .pill-name { font-weight: bold; color: #333; }
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .nav-tab { padding: 10px 20px; background: rgba(255,255,255,0.3); color: white; border-radius: 8px; cursor: pointer; transition: background 0.3s; }
+        .nav-tab.active { background: white; color: #667eea; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .alert-item { padding: 15px; border-radius: 8px; margin-bottom: 10px; color: white; }
+        .alert-warning { background: #fab005; }
+        .alert-urgent { background: #fa5252; }
+        .alert-emergency { background: #b33939; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .alert-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .alert-title { font-weight: bold; }
+        .alert-time { font-size: 0.8em; opacity: 0.8; }
+        .log-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f9f9f9; border-radius: 8px; margin-bottom: 8px; }
+        .log-status { padding: 4px 12px; border-radius: 4px; font-size: 0.9em; }
+        .log-pending { background: #fff3cd; color: #856404; }
+        .log-taken { background: #d4edda; color: #155724; }
+        .log-missed { background: #f8d7da; color: #721c24; }
+        .time-list { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+        .time-badge { background: #e7f5ff; color: #1971c2; padding: 5px 12px; border-radius: 20px; font-size: 0.9em; }
+        .empty-msg { text-align: center; color: #999; padding: 40px; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; }
+        .modal-box { background: white; border-radius: 15px; padding: 30px; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .modal-box h3 { margin-bottom: 15px; }
+        .modal-box p { color: #666; margin-bottom: 20px; }
+        .modal-buttons { display: flex; gap: 10px; justify-content: center; }
+        .btn-cancel { background: #ccc; }
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 30px; border-radius: 8px; z-index: 2000; animation: fadeInOut 2s forwards; }
+        @keyframes fadeInOut { 0% { opacity: 0; } 10% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🩺 血压守护 - 智能服药提醒</h1>
+
+        <div class="nav-tabs" id="navTabs">
+            <a class="nav-tab active" data-tab="alert">🚨 预警中心</a>
+            <a class="nav-tab" data-tab="log">📋 服药记录</a>
+            <a class="nav-tab" data-tab="medication">💊 药物管理</a>
+            <a class="nav-tab" data-tab="home">📊 首页</a>
+        </div>
+
+        <div id="alert" class="tab-content active">
+            <div class="card">
+                <h2>🚨 实时预警 <button id="btnRefreshAlert">🔄 刷新检测</button></h2>
+                <div id="activeAlerts" class="record-list">
+                    <div class="empty-msg">暂无预警信息</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>⏰ 预警设置</h2>
+                <div class="grid">
+                    <div class="form-group">
+                        <label>一级预警（漏服后）</label>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <input type="number" id="alertLevel1" value="10" min="1" max="60" style="width:100px;">
+                            <span>分钟</span>
+                        </div>
+                        <small style="color:#666;">提醒管理员子女和保姆</small>
+                    </div>
+                    <div class="form-group">
+                        <label>二级预警（漏服后）</label>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <input type="number" id="alertLevel2" value="25" min="1" max="60" style="width:100px;">
+                            <span>分钟</span>
+                        </div>
+                        <small style="color:#666;">通知所有子女和保姆</small>
+                    </div>
+                    <div class="form-group">
+                        <label>紧急预警（漏服后）</label>
+                        <div style="display:flex;gap:10px;align-items:center;">
+                            <input type="number" id="alertLevel3" value="40" min="1" max="60" style="width:100px;">
+                            <span>分钟</span>
+                        </div>
+                        <small style="color:#666;">启动电话外呼</small>
+                    </div>
+                </div>
+                <button id="btnSaveAlertSettings" style="margin-top:15px;">保存设置</button>
+            </div>
+        </div>
+
+        <div id="log" class="tab-content">
+            <div class="card">
+                <h2>📋 今日服药记录 <button id="btnCreateLogs">🔄 生成今日记录</button></h2>
+                <div style="margin-bottom:15px;padding:10px;background:#e7f5ff;border-radius:8px;">
+                    <strong>今日日期：</strong><span id="todayDate"></span>
+                </div>
+                <div id="todayLogList" class="record-list">
+                    <div class="empty-msg">暂无服药记录，点击上方按钮生成</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📅 历史记录</h2>
+                <div id="historyLogList" class="record-list">
+                    <div class="empty-msg">暂无历史记录</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="medication" class="tab-content">
+            <div class="card">
+                <h2>💊 添加药物</h2>
+                <form id="pillForm">
+                    <div class="grid">
+                        <div class="form-group">
+                            <label>药物名称 *</label>
+                            <input type="text" id="pillName" placeholder="如：硝苯地平">
+                        </div>
+                        <div class="form-group">
+                            <label>剂量</label>
+                            <input type="text" id="pillDosage" placeholder="如：1片、5mg">
+                        </div>
+                    </div>
+                    <div class="grid">
+                        <div class="form-group">
+                            <label>服药频次</label>
+                            <select id="pillFrequency">
+                                <option value="once">每日一次</option>
+                                <option value="twice" selected>每日两次</option>
+                                <option value="thrice">每日三次</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>服药时间（多个用英文逗号分隔）*</label>
+                            <input type="text" id="pillTimes" placeholder="如：08:00, 14:00, 20:00">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>开始日期</label>
+                        <input type="date" id="pillStart">
+                    </div>
+                    <button type="submit" id="btnAddPill">添加药物</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>📦 药物列表</h2>
+                <div id="pillList" class="pill-list">
+                    <div class="empty-msg">暂无药物，请添加</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="home" class="tab-content">
+            <div class="grid">
+                <div class="card">
+                    <h2>📊 今日统计</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value" id="statTotal">0</div>
+                            <div class="stat-label">今日应服药</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="statTaken">0</div>
+                            <div class="stat-label">已服药</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="statPending">0</div>
+                            <div class="stat-label">待服药</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="statMissed">0</div>
+                            <div class="stat-label">已漏服</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>💊 药物提醒</h2>
+                    <div id="homePillList" class="pill-list">
+                        <div class="empty-msg">暂无药物提醒</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>🚨 活跃预警</h2>
+                <div id="homeAlerts" class="record-list">
+                    <div class="empty-msg">暂无预警</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            var STORAGE_KEYS = {
+                MEDICATIONS: 'bp_medications',
+                LOGS: 'bp_medication_logs',
+                ALERTS: 'bp_alerts',
+                ALERT_SETTINGS: 'bp_alert_settings'
+            };
+
+            function getData(key) {
+                try {
+                    var data = localStorage.getItem(key);
+                    return data ? JSON.parse(data) : [];
+                } catch (e) {
+                    console.error('读取数据失败:', key, e);
+                    return [];
+                }
+            }
+
+            function setData(key, data) {
+                try {
+                    localStorage.setItem(key, JSON.stringify(data));
+                } catch (e) {
+                    console.error('保存数据失败:', key, e);
+                    showToast('数据保存失败，请检查浏览器存储空间');
+                }
+            }
+
+            function getToday() {
+                return new Date().toISOString().split('T')[0];
+            }
+
+            function formatDate(dateStr) {
+                return new Date(dateStr).toLocaleDateString('zh-CN');
+            }
+
+            function formatTime(dateStr) {
+                return new Date(dateStr).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            }
+
+            function getAlertSettings() {
+                var settings = getData(STORAGE_KEYS.ALERT_SETTINGS);
+                if (settings.length === 0) {
+                    return { level1: 10, level2: 25, level3: 40 };
+                }
+                return settings[0];
+            }
+
+            function showToast(msg) {
+                var toast = document.createElement('div');
+                toast.className = 'toast';
+                toast.textContent = msg;
+                document.body.appendChild(toast);
+                setTimeout(function() {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 2100);
+            }
+
+            function showConfirm(msg, onConfirm) {
+                var overlay = document.createElement('div');
+                overlay.className = 'modal-overlay';
+                overlay.innerHTML = '<div class="modal-box">' +
+                    '<h3>确认操作</h3>' +
+                    '<p>' + msg + '</p>' +
+                    '<div class="modal-buttons">' +
+                        '<button class="btn-cancel">取消</button>' +
+                        '<button class="danger">确认删除</button>' +
+                    '</div>' +
+                '</div>';
+
+                overlay.querySelector('.btn-cancel').addEventListener('click', function() {
+                    document.body.removeChild(overlay);
+                });
+
+                overlay.querySelector('.danger').addEventListener('click', function() {
+                    document.body.removeChild(overlay);
+                    if (typeof onConfirm === 'function') {
+                        onConfirm();
+                    }
+                });
+
+                overlay.addEventListener('click', function(e) {
+                    if (e.target === overlay) {
+                        document.body.removeChild(overlay);
+                    }
+                });
+
+                document.body.appendChild(overlay);
+            }
+
+            function showTab(tabId) {
+                var tabs = document.querySelectorAll('.nav-tab');
+                for (var i = 0; i < tabs.length; i++) {
+                    tabs[i].classList.remove('active');
+                }
+                var contents = document.querySelectorAll('.tab-content');
+                for (var j = 0; j < contents.length; j++) {
+                    contents[j].classList.remove('active');
+                }
+                document.getElementById(tabId).classList.add('active');
+                var activeTab = document.querySelector('[data-tab="' + tabId + '"]');
+                if (activeTab) activeTab.classList.add('active');
+                refreshUI();
+            }
+
+            function refreshUI() {
+                document.getElementById('todayDate').textContent = formatDate(getToday());
+                loadAlertSettings();
+                updateStats();
+                renderMedicationList();
+                updateTodayLogList();
+                updateHistoryLogList();
+                updateHomeView();
+                updateAlertDisplay();
+            }
+
+            function loadAlertSettings() {
+                var settings = getAlertSettings();
+                document.getElementById('alertLevel1').value = settings.level1;
+                document.getElementById('alertLevel2').value = settings.level2;
+                document.getElementById('alertLevel3').value = settings.level3;
+            }
+
+            function saveAlertSettings() {
+                var settings = {
+                    level1: parseInt(document.getElementById('alertLevel1').value) || 10,
+                    level2: parseInt(document.getElementById('alertLevel2').value) || 25,
+                    level3: parseInt(document.getElementById('alertLevel3').value) || 40
+                };
+                setData(STORAGE_KEYS.ALERT_SETTINGS, [settings]);
+                showToast('预警设置已保存！');
+                checkAlertsNow();
+            }
+
+            function updateStats() {
+                var logs = getData(STORAGE_KEYS.LOGS);
+                var today = getToday();
+                var todayLogs = logs.filter(function(log) {
+                    return log.scheduledTime.startsWith(today);
+                });
+
+                document.getElementById('statTotal').textContent = todayLogs.length;
+                document.getElementById('statTaken').textContent = todayLogs.filter(function(l) { return l.status === 'taken'; }).length;
+                document.getElementById('statPending').textContent = todayLogs.filter(function(l) { return l.status === 'pending'; }).length;
+                document.getElementById('statMissed').textContent = todayLogs.filter(function(l) { return l.status === 'missed'; }).length;
+            }
+
+            function renderMedicationList() {
+                var medications = getData(STORAGE_KEYS.MEDICATIONS);
+                var container = document.getElementById('pillList');
+
+                if (medications.length === 0) {
+                    container.innerHTML = '<div class="empty-msg">暂无药物，请添加</div>';
+                    return;
+                }
+
+                var freqMap = { once: '每日一次', twice: '每日两次', thrice: '每日三次' };
+                var html = '';
+                for (var i = 0; i < medications.length; i++) {
+                    var med = medications[i];
+                    var timesHtml = '';
+                    if (med.times) {
+                        var timesArr = med.times.split(',');
+                        for (var j = 0; j < timesArr.length; j++) {
+                            timesHtml += '<span class="time-badge">⏰ ' + timesArr[j].trim() + '</span>';
+                        }
+                    }
+
+                    html += '<div class="pill-item" data-medication-id="' + med.id + '">' +
+                        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+                            '<div>' +
+                                '<div class="pill-name" style="font-size:1.2em;">' + med.name + '</div>' +
+                                '<div style="color:#666;margin-top:5px;">剂量：' + (med.dosage || '未设置') + ' | ' + (freqMap[med.frequency] || '每日一次') + '</div>' +
+                                '<div class="time-list">' + timesHtml + '</div>' +
+                                '<div style="color:#999;font-size:0.9em;margin-top:5px;">开始日期：' + (med.startDate || '未设置') + '</div>' +
+                            '</div>' +
+                            '<button class="danger btn-delete-medication" data-medication-id="' + med.id + '" style="padding:8px 16px;">删除</button>' +
+                        '</div>' +
+                    '</div>';
+                }
+                container.innerHTML = html;
+            }
+
+            function deleteMedication(medId) {
+                var medications = getData(STORAGE_KEYS.MEDICATIONS);
+                var filtered = [];
+                var found = false;
+                for (var i = 0; i < medications.length; i++) {
+                    if (String(medications[i].id) !== String(medId)) {
+                        filtered.push(medications[i]);
+                    } else {
+                        found = true;
+                    }
+                }
+                if (found) {
+                    setData(STORAGE_KEYS.MEDICATIONS, filtered);
+                    showToast('药物已删除！');
+                    refreshUI();
+                } else {
+                    showToast('未找到该药物记录');
+                }
+            }
+
+            function createTodayLogs() {
+                var medications = getData(STORAGE_KEYS.MEDICATIONS);
+                var logs = getData(STORAGE_KEYS.LOGS);
+                var today = getToday();
+                var newLogsCount = 0;
+
+                for (var a = 0; a < medications.length; a++) {
+                    var med = medications[a];
+                    if (!med.times || med.times.trim() === '') continue;
+                    var times = med.times.split(',').map(function(t) { return t.trim(); }).filter(function(t) { return t; });
+                    var startDate = med.startDate || today;
+
+                    if (today < startDate) continue;
+
+                    for (var b = 0; b < times.length; b++) {
+                        var time = times[b];
+                        var scheduledTime = today + 'T' + time + ':00';
+                        var exists = false;
+                        for (var c = 0; c < logs.length; c++) {
+                            if (logs[c].pillName === med.name && logs[c].scheduledTime === scheduledTime) {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists) {
+                            logs.push({
+                                id: Date.now() + Math.random(),
+                                pillName: med.name,
+                                dosage: med.dosage,
+                                scheduledTime: scheduledTime,
+                                status: 'pending',
+                                createdAt: new Date().toISOString()
+                            });
+                            newLogsCount++;
+                        }
+                    }
+                }
+
+                setData(STORAGE_KEYS.LOGS, logs);
+                localStorage.setItem('bp_last_log_gen_date', today);
+
+                if (newLogsCount > 0) {
+                    showToast('已生成 ' + newLogsCount + ' 条服药记录！');
+                } else {
+                    showToast('今日服药记录已存在，无需重复生成！');
+                }
+
+                refreshUI();
+                checkAlertsNow();
+            }
+
+            function updateTodayLogList() {
+                var logs = getData(STORAGE_KEYS.LOGS);
+                var today = getToday();
+                var todayLogs = [];
+
+                for (var i = 0; i < logs.length; i++) {
+                    if (logs[i].scheduledTime.startsWith(today)) {
+                        todayLogs.push(logs[i]);
+                    }
+                }
+                todayLogs.sort(function(a, b) {
+                    return new Date(a.scheduledTime) - new Date(b.scheduledTime);
+                });
+
+                var container = document.getElementById('todayLogList');
+
+                if (todayLogs.length === 0) {
+                    container.innerHTML = '<div class="empty-msg">暂无今日记录，点击上方"生成今日记录"按钮</div>';
+                    return;
+                }
+
+                var html = '';
+                for (var j = 0; j < todayLogs.length; j++) {
+                    var log = todayLogs[j];
+                    var statusClass = log.status === 'taken' ? 'log-taken' : (log.status === 'missed' ? 'log-missed' : 'log-pending');
+                    var statusText = log.status === 'taken' ? '已服用' : (log.status === 'missed' ? '已漏服' : '待服用');
+                    var statusTime = log.status === 'taken' ? '<span style="color:#51cf66;">服用时间：' + formatTime(log.actualTime) + '</span>' :
+                                    (log.status === 'missed' ? '<span style="color:#ff6b6b;">已超时未服</span>' : '');
+
+                    html += '<div class="log-item">' +
+                        '<div>' +
+                            '<div style="font-weight:bold;font-size:1.1em;">💊 ' + log.pillName + '</div>' +
+                            '<div style="color:#667eea;margin-top:3px;">⏰ 计划时间：' + formatTime(log.scheduledTime) + (log.dosage ? ' | 剂量：' + log.dosage : '') + '</div>' +
+                            (statusTime ? '<div style="margin-top:3px;">' + statusTime + '</div>' : '') +
+                        '</div>' +
+                        '<div style="display:flex;align-items:center;gap:10px;">' +
+                            '<span class="log-status ' + statusClass + '">' + statusText + '</span>' +
+                            (log.status === 'pending' ? '<button class="confirm btn-take-medication" data-log-id="' + log.id + '">确认服用</button>' : '') +
+                        '</div>' +
+                    '</div>';
+                }
+                container.innerHTML = html;
+            }
+
+            function updateHistoryLogList() {
+                var logs = getData(STORAGE_KEYS.LOGS);
+                var today = getToday();
+                var historyLogs = [];
+
+                for (var i = 0; i < logs.length; i++) {
+                    if (!logs[i].scheduledTime.startsWith(today)) {
+                        historyLogs.push(logs[i]);
+                    }
+                }
+                historyLogs.sort(function(a, b) {
+                    return new Date(b.scheduledTime) - new Date(a.scheduledTime);
+                });
+                historyLogs = historyLogs.slice(0, 50);
+
+                var container = document.getElementById('historyLogList');
+
+                if (historyLogs.length === 0) {
+                    container.innerHTML = '<div class="empty-msg">暂无历史记录</div>';
+                    return;
+                }
+
+                var html = '';
+                for (var j = 0; j < historyLogs.length; j++) {
+                    var log = historyLogs[j];
+                    var statusClass = log.status === 'taken' ? 'log-taken' : (log.status === 'missed' ? 'log-missed' : 'log-pending');
+                    var statusText = log.status === 'taken' ? '已服用' : (log.status === 'missed' ? '已漏服' : '待服用');
+
+                    html += '<div class="log-item">' +
+                        '<div>' +
+                            '<div style="font-weight:bold;">💊 ' + log.pillName + '</div>' +
+                            '<div style="color:#999;margin-top:3px;">📅 ' + formatDate(log.scheduledTime) + ' ' + formatTime(log.scheduledTime) + (log.dosage ? ' | 剂量：' + log.dosage : '') + '</div>' +
+                        '</div>' +
+                        '<span class="log-status ' + statusClass + '">' + statusText + '</span>' +
+                    '</div>';
+                }
+                container.innerHTML = html;
+            }
+
+            function confirmLog(logId) {
+                var logs = getData(STORAGE_KEYS.LOGS);
+                var found = false;
+                for (var i = 0; i < logs.length; i++) {
+                    if (String(logs[i].id) === String(logId)) {
+                        logs[i].status = 'taken';
+                        logs[i].actualTime = new Date().toISOString();
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
+                    setData(STORAGE_KEYS.LOGS, logs);
+                    refreshUI();
+                    checkAlertsNow();
+                    showToast('已确认服药！');
+                }
+            }
+
+            function checkAlertsNow() {
+                var settings = getAlertSettings();
+                var logs = getData(STORAGE_KEYS.LOGS);
+                var alerts = getData(STORAGE_KEYS.ALERTS);
+                var today = getToday();
+                var now = new Date();
+
+                var todayLogs = [];
+                for (var i = 0; i < logs.length; i++) {
+                    if (logs[i].scheduledTime.startsWith(today) && logs[i].status === 'pending') {
+                        todayLogs.push(logs[i]);
+                    }
+                }
+
+                for (var j = 0; j < todayLogs.length; j++) {
+                    var log = todayLogs[j];
+                    var scheduledTime = new Date(log.scheduledTime);
+                    var diffMinutes = Math.floor((now - scheduledTime) / 60000);
+
+                    if (diffMinutes < 0) continue;
+
+                    var alertLevel = null;
+                    if (diffMinutes >= settings.level3) {
+                        alertLevel = 'emergency';
+                    } else if (diffMinutes >= settings.level2) {
+                        alertLevel = 'urgent';
+                    } else if (diffMinutes >= settings.level1) {
+                        alertLevel = 'warning';
+                    }
+
+                    if (alertLevel) {
+                        var exists = false;
+                        for (var k = 0; k < alerts.length; k++) {
+                            if (alerts[k].logId === log.id && alerts[k].level === alertLevel && alerts[k].status === 'active') {
+                                exists = true;
+                                break;
+                            }
+                        }
+                        if (!exists) {
+                            var message = '';
+                            if (alertLevel === 'warning') {
+                                message = '一级预警：' + log.pillName + ' 已漏服' + diffMinutes + '分钟。';
+                            } else if (alertLevel === 'urgent') {
+                                message = '二级预警：' + log.pillName + ' 已漏服' + diffMinutes + '分钟。';
+                            } else {
+                                message = '紧急预警：' + log.pillName + ' 已漏服' + diffMinutes + '分钟以上！';
+                            }
+                            alerts.push({
+                                id: Date.now(),
+                                logId: log.id,
+                                pillName: log.pillName,
+                                scheduledTime: log.scheduledTime,
+                                level: alertLevel,
+                                message: message,
+                                status: 'active',
+                                createdAt: now.toISOString()
+                            });
+                        }
+                    }
+                }
+
+                var modified = false;
+                for (var m = 0; m < logs.length; m++) {
+                    if (logs[m].scheduledTime.startsWith(today) && logs[m].status === 'pending') {
+                        var schTime = new Date(logs[m].scheduledTime);
+                        var diffM = Math.floor((now - schTime) / 60000);
+                        if (diffM >= settings.level1 + 5) {
+                            logs[m].status = 'missed';
+                            modified = true;
+                        }
+                    }
+                }
+
+                setData(STORAGE_KEYS.LOGS, logs);
+                setData(STORAGE_KEYS.ALERTS, alerts);
+                updateAlertDisplay();
+                updateStats();
+            }
+
+            function updateAlertDisplay() {
+                var alerts = getData(STORAGE_KEYS.ALERTS);
+                var activeAlerts = [];
+                for (var i = 0; i < alerts.length; i++) {
+                    if (alerts[i].status === 'active') {
+                        activeAlerts.push(alerts[i]);
+                    }
+                }
+
+                var container = document.getElementById('activeAlerts');
+
+                if (activeAlerts.length === 0) {
+                    container.innerHTML = '<div class="empty-msg">✅ 暂无预警信息，一切正常！</div>';
+                    return;
+                }
+
+                var levelOrder = { emergency: 0, urgent: 1, warning: 2 };
+                activeAlerts.sort(function(a, b) { return levelOrder[a.level] - levelOrder[b.level]; });
+
+                var html = '';
+                for (var j = 0; j < activeAlerts.length; j++) {
+                    var al = activeAlerts[j];
+                    var levelClass = al.level === 'warning' ? 'alert-warning' : (al.level === 'urgent' ? 'alert-urgent' : 'alert-emergency');
+                    var levelText = al.level === 'warning' ? '一级预警' : (al.level === 'urgent' ? '二级预警' : '紧急预警');
+
+                    html += '<div class="alert-item ' + levelClass + '" data-alert-id="' + al.id + '">' +
+                        '<div class="alert-header">' +
+                            '<span class="alert-title">' + levelText + '：' + al.pillName + '</span>' +
+                            '<span class="alert-time">⏰ ' + formatTime(al.scheduledTime) + '</span>' +
+                        '</div>' +
+                        '<p style="margin-top:8px;">' + al.message + '</p>' +
+                        '<div style="margin-top:10px;">' +
+                            '<button class="btn-resolve-alert" data-alert-id="' + al.id + '" style="background:#fff;color:#333;padding:6px 16px;">已处理</button>' +
+                        '</div>' +
+                    '</div>';
+                }
+                container.innerHTML = html;
+            }
+
+            function resolveAlert(alertId) {
+                var alerts = getData(STORAGE_KEYS.ALERTS);
+                var found = false;
+                for (var i = 0; i < alerts.length; i++) {
+                    if (String(alerts[i].id) === String(alertId)) {
+                        alerts[i].status = 'resolved';
+                        alerts[i].resolvedAt = new Date().toISOString();
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
+                    setData(STORAGE_KEYS.ALERTS, alerts);
+                    refreshUI();
+                    showToast('预警已处理！');
+                }
+            }
+
+            function updateHomeView() {
+                var medications = getData(STORAGE_KEYS.MEDICATIONS);
+                var alerts = getData(STORAGE_KEYS.ALERTS);
+                var logs = getData(STORAGE_KEYS.LOGS);
+                var today = getToday();
+
+                var todayLogsArr = [];
+                for (var i = 0; i < logs.length; i++) {
+                    if (logs[i].scheduledTime.startsWith(today)) {
+                        todayLogsArr.push(logs[i]);
+                    }
+                }
+
+                var container = document.getElementById('homePillList');
+                if (medications.length === 0) {
+                    container.innerHTML = '<div class="empty-msg">暂无药物提醒</div>';
+                } else {
+                    var html = '';
+                    for (var j = 0; j < medications.length; j++) {
+                        var med = medications[j];
+                        var times = [];
+                        if (med.times) {
+                            var timesArr = med.times.split(',');
+                            for (var k = 0; k < timesArr.length; k++) {
+                                var t = timesArr[k].trim();
+                                if (t) times.push(t);
+                            }
+                        }
+                        var pendingCount = 0;
+                        for (var m = 0; m < todayLogsArr.length; m++) {
+                            if (todayLogsArr[m].pillName === med.name && todayLogsArr[m].status === 'pending') {
+                                pendingCount++;
+                            }
+                        }
+                        var statusBadge = pendingCount > 0 ? '<span class="log-status log-pending" style="margin-left:10px;">' + pendingCount + '次待服</span>' : '<span class="log-status log-taken" style="margin-left:10px;">已完成</span>';
+                        var timeBadges = '';
+                        for (var n = 0; n < times.length; n++) {
+                            timeBadges += '<span class="time-badge">⏰ ' + times[n] + '</span>';
+                        }
+
+                        html += '<div class="pill-item">' +
+                            '<div class="pill-name">' + med.name + ' ' + statusBadge + '</div>' +
+                            '<div class="time-list">' + timeBadges + '</div>' +
+                        '</div>';
+                    }
+                    container.innerHTML = html;
+                }
+
+                var activeAlerts = [];
+                for (var p = 0; p < alerts.length; p++) {
+                    if (alerts[p].status === 'active') activeAlerts.push(alerts[p]);
+                }
+
+                var homeAlertContainer = document.getElementById('homeAlerts');
+                if (activeAlerts.length === 0) {
+                    homeAlertContainer.innerHTML = '<div class="empty-msg">✅ 暂无预警</div>';
+                } else {
+                    var alertHtml = '';
+                    var showCount = Math.min(activeAlerts.length, 3);
+                    for (var q = 0; q < showCount; q++) {
+                        var al = activeAlerts[q];
+                        var levelClass = al.level === 'warning' ? 'alert-warning' : (al.level === 'urgent' ? 'alert-urgent' : 'alert-emergency');
+                        var levelText = al.level === 'warning' ? '一级' : (al.level === 'urgent' ? '二级' : '紧急');
+                        alertHtml += '<div class="alert-item ' + levelClass + '" style="padding:10px;">' +
+                            '<div style="font-weight:bold;">' + al.pillName + ' - ' + levelText + '预警</div>' +
+                            '<div style="font-size:0.9em;margin-top:3px;">' + al.message + '</div>' +
+                        '</div>';
+                    }
+                    homeAlertContainer.innerHTML = alertHtml;
+                }
+            }
+
+            function onAddPill(e) {
+                e.preventDefault();
+                var pill = {
+                    id: Date.now() + Math.random(),
+                    name: document.getElementById('pillName').value.trim(),
+                    dosage: document.getElementById('pillDosage').value.trim(),
+                    frequency: document.getElementById('pillFrequency').value,
+                    times: document.getElementById('pillTimes').value.trim(),
+                    startDate: document.getElementById('pillStart').value || getToday(),
+                    createdAt: new Date().toISOString()
+                };
+
+                if (!pill.name || !pill.times) {
+                    showToast('请填写药物名称和服药时间！');
+                    return;
+                }
+
+                var medications = getData(STORAGE_KEYS.MEDICATIONS);
+                medications.push(pill);
+                setData(STORAGE_KEYS.MEDICATIONS, medications);
+
+                document.getElementById('pillForm').reset();
+                document.getElementById('pillStart').value = getToday();
+
+                showToast('药物添加成功！');
+                createTodayLogs();
+                refreshUI();
+            }
+
+            function setupEventDelegation() {
+                document.getElementById('pillList').addEventListener('click', function(e) {
+                    var target = e.target;
+                    while (target && target !== this) {
+                        if (target.classList.contains('btn-delete-medication')) {
+                            var medId = target.getAttribute('data-medication-id');
+                            if (medId) {
+                                showConfirm('确定要删除这个药物吗？删除后不可恢复。', function() {
+                                    deleteMedication(medId);
+                                });
+                            }
+                            return;
+                        }
+                        target = target.parentElement;
+                    }
+                });
+
+                document.getElementById('todayLogList').addEventListener('click', function(e) {
+                    var target = e.target;
+                    while (target && target !== this) {
+                        if (target.classList.contains('btn-take-medication')) {
+                            var logId = target.getAttribute('data-log-id');
+                            if (logId) {
+                                showConfirm('确认已按时服用此药物吗？', function() {
+                                    confirmLog(logId);
+                                });
+                            }
+                            return;
+                        }
+                        target = target.parentElement;
+                    }
+                });
+
+                document.getElementById('activeAlerts').addEventListener('click', function(e) {
+                    var target = e.target;
+                    while (target && target !== this) {
+                        if (target.classList.contains('btn-resolve-alert')) {
+                            var alertId = target.getAttribute('data-alert-id');
+                            if (alertId) {
+                                resolveAlert(alertId);
+                            }
+                            return;
+                        }
+                        target = target.parentElement;
+                    }
+                });
+
+                document.getElementById('navTabs').addEventListener('click', function(e) {
+                    var target = e.target;
+                    while (target && target !== this) {
+                        if (target.classList.contains('nav-tab')) {
+                            var tabId = target.getAttribute('data-tab');
+                            if (tabId) showTab(tabId);
+                            return;
+                        }
+                        target = target.parentElement;
+                    }
+                });
+
+                document.getElementById('btnRefreshAlert').addEventListener('click', checkAlertsNow);
+                document.getElementById('btnSaveAlertSettings').addEventListener('click', saveAlertSettings);
+                document.getElementById('btnCreateLogs').addEventListener('click', createTodayLogs);
+                document.getElementById('pillForm').addEventListener('submit', onAddPill);
+            }
+
+            function checkAndAutoCreateLogs() {
+                var today = getToday();
+                var lastGen = localStorage.getItem('bp_last_log_gen_date');
+                if (lastGen !== today) {
+                    createTodayLogs();
+                    localStorage.setItem('bp_last_log_gen_date', today);
+                }
+            }
+
+            setupEventDelegation();
+            document.getElementById('pillStart').value = getToday();
+            checkAndAutoCreateLogs();
+            refreshUI();
+
+            setInterval(checkAlertsNow, 60000);
+            setInterval(function() {
+                checkAndAutoCreateLogs();
+                checkAlertsNow();
+            }, 30000);
+        })();
+    </script>
+</body>
+</html>

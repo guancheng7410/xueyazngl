@@ -1,0 +1,219 @@
+{
+  "timestamp": "2026-05-02 18:00:47",
+  "total": 26,
+  "passed": 26,
+  "failed": 0,
+  "fixed": 2,
+  "passRate": "100.0%",
+  "totalTime": "97ms",
+  "results": [
+    {
+      "name": "localStorage读写",
+      "category": "基础",
+      "status": "pass",
+      "time": 0,
+      "detail": "读写正常",
+      "fixed": false
+    },
+    {
+      "name": "日期格式化",
+      "category": "基础",
+      "status": "pass",
+      "time": 1,
+      "detail": "日期格式正确: 2026-05-02",
+      "fixed": false
+    },
+    {
+      "name": "用户状态初始化",
+      "category": "核心",
+      "status": "pass",
+      "time": 0,
+      "detail": "状态初始化成功",
+      "fixed": false
+    },
+    {
+      "name": "添加药物",
+      "category": "核心",
+      "status": "pass",
+      "time": 0,
+      "detail": "添加2种药物成功",
+      "fixed": false
+    },
+    {
+      "name": "删除药物(ID类型比较)",
+      "category": "核心",
+      "status": "pass",
+      "time": 0,
+      "detail": "ID类型比较已修复，删除成功",
+      "fixed": true
+    },
+    {
+      "name": "确认服药",
+      "category": "核心",
+      "status": "pass",
+      "time": 0,
+      "detail": "确认服药成功",
+      "fixed": false
+    },
+    {
+      "name": "记录血压",
+      "category": "核心",
+      "status": "pass",
+      "time": 0,
+      "detail": "添加2条血压记录成功",
+      "fixed": false
+    },
+    {
+      "name": "血压记录排序",
+      "category": "核心",
+      "status": "pass",
+      "time": 0,
+      "detail": "血压记录排序正确（新到旧）",
+      "fixed": false
+    },
+    {
+      "name": "添加预警",
+      "category": "核心",
+      "status": "pass",
+      "time": 0,
+      "detail": "添加2条预警成功",
+      "fixed": false
+    },
+    {
+      "name": "处理预警(ID比较)",
+      "category": "核心",
+      "status": "pass",
+      "time": 0,
+      "detail": "预警ID比较已修复，处理成功",
+      "fixed": true
+    },
+    {
+      "name": "添加家庭成员",
+      "category": "家庭",
+      "status": "pass",
+      "time": 0,
+      "detail": "添加家庭成员成功，共2人",
+      "fixed": false
+    },
+    {
+      "name": "切换家庭成员",
+      "category": "家庭",
+      "status": "pass",
+      "time": 0,
+      "detail": "切换成员成功: 测试成员",
+      "fixed": false
+    },
+    {
+      "name": "多用户数据隔离",
+      "category": "家庭",
+      "status": "pass",
+      "time": 0,
+      "detail": "数据隔离验证通过",
+      "fixed": false
+    },
+    {
+      "name": "库存计算",
+      "category": "业务",
+      "status": "pass",
+      "time": 0,
+      "detail": "库存计算正确，2种药物库存不足",
+      "fixed": false
+    },
+    {
+      "name": "预警级别判断",
+      "category": "业务",
+      "status": "pass",
+      "time": 0,
+      "detail": "预警级别判断全部正确",
+      "fixed": false
+    },
+    {
+      "name": "健康评估计算",
+      "category": "业务",
+      "status": "pass",
+      "time": 0,
+      "detail": "健康评估计算正确: 130/85, 心率76",
+      "fixed": false
+    },
+    {
+      "name": "单条数据图表处理",
+      "category": "边界",
+      "status": "pass",
+      "time": 0,
+      "detail": "单条数据正确处理（无需渲染图表）",
+      "fixed": false
+    },
+    {
+      "name": "空数据处理",
+      "category": "边界",
+      "status": "pass",
+      "time": 0,
+      "detail": "空数据处理正确",
+      "fixed": false
+    },
+    {
+      "name": "异常值处理",
+      "category": "边界",
+      "status": "pass",
+      "time": 0,
+      "detail": "异常值验证全部正确",
+      "fixed": false
+    },
+    {
+      "name": "压力:大量血压数据(1000条)",
+      "category": "压力",
+      "status": "pass",
+      "time": 14,
+      "detail": "写入1000条血压记录 (14ms)",
+      "fixed": false
+    },
+    {
+      "name": "压力:大量药物数据(100种)",
+      "category": "压力",
+      "status": "pass",
+      "time": 0,
+      "detail": "写入100种药物 (0ms)",
+      "fixed": false
+    },
+    {
+      "name": "压力:并发写入测试",
+      "category": "压力",
+      "status": "pass",
+      "time": 20,
+      "detail": "100次写入全部成功 (20ms)",
+      "fixed": false
+    },
+    {
+      "name": "压力:大数据查询",
+      "category": "压力",
+      "status": "pass",
+      "time": 0,
+      "detail": "查询100条数据: 偏高79条, 平均170 (0ms)",
+      "fixed": false
+    },
+    {
+      "name": "压力:图表渲染计算",
+      "category": "压力",
+      "status": "pass",
+      "time": 0,
+      "detail": "处理100天数据 (0ms)",
+      "fixed": false
+    },
+    {
+      "name": "压力:多用户隔离(10用户)",
+      "category": "压力",
+      "status": "pass",
+      "time": 2,
+      "detail": "10用户数据隔离验证通过 (2ms)",
+      "fixed": false
+    },
+    {
+      "name": "压力:数据序列化(10000对象)",
+      "category": "压力",
+      "status": "pass",
+      "time": 53,
+      "detail": "序列化10000对象 (53ms)",
+      "fixed": false
+    }
+  ]
+}

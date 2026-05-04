@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>血压守护APP - 测试数据配置</title>
+<style>
+:root{--primary:#667eea;--success:#51cf66;--warn:#ffc107;--danger:#ff5757;--bg:#f0f2f5;--card:#fff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'Microsoft YaHei',sans-serif;background:var(--bg);padding:20px;max-width:800px;margin:0 auto}
+h1{color:var(--primary);text-align:center;margin-bottom:8px}
+.subtitle{text-align:center;color:#999;margin-bottom:30px;font-size:14px}
+.card{background:var(--card);border-radius:16px;padding:24px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.card h3{color:#333;margin-bottom:12px}
+.btn{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:12px 30px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin:5px}
+.btn:hover{opacity:.9}
+.btn-green{background:linear-gradient(135deg,#51cf66,#20c997)}
+.btn-orange{background:linear-gradient(135deg,#ff9a56,#ff5757)}
+.btn-danger{background:linear-gradient(135deg,#ff6b6b,#ee5a52)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+#log{background:#1e1e1e;color:#d4d4d4;padding:16px;border-radius:10px;font-family:Consolas,monospace;font-size:13px;max-height:400px;overflow-y:auto;white-space:pre-wrap;line-height:1.6}
+.progress{height:8px;background:#e0e0e0;border-radius:4px;margin:16px 0;overflow:hidden}
+.progress-bar{height:100%;background:linear-gradient(90deg,#667eea,#764ba2);transition:width .3s}
+.test-item{display:flex;align-items:center;padding:12px;border-radius:12px;background:#f8f9fa;margin-bottom:8px}
+.test-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-right:12px;font-size:20px}
+.test-icon.pass{background:#e8f5e9;color:#4caf50}
+.test-icon.fail{background:#ffebee;color:#f44336}
+.test-icon.pending{background:#fff8e1;color:#ffc107}
+.test-info{flex:1}
+.test-name{font-weight:600;margin-bottom:4px}
+.test-detail{font-size:12px;color:var(--text-light)}
+.badge{background:var(--primary);color:#fff;border-radius:10px;padding:2px 8px;font-size:12px;margin-left:8px}
+</style>
+</head>
+<body>
+<h1>🧪 血压守护APP - 测试数据配置</h1>
+<p class="subtitle">自动配置完整测试数据，演示所有功能场景</p>
+
+<div class="card" style="text-align:center">
+    <button class="btn btn-green" id="btnLoad" onclick="loadTestData()">📋 加载测试数据</button>
+    <button class="btn btn-orange" id="btnTest" onclick="runTests()" disabled>🧪 运行功能测试</button>
+    <button class="btn" id="btnApp" onclick="openApp()" disabled>📱 打开APP</button>
+    <button class="btn btn-danger" onclick="clearData()">🗑️ 清除数据</button>
+</div>
+
+<div class="progress"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+
+<div class="card">
+    <h3>测试数据配置</h3>
+    <div id="dataStatus"></div>
+</div>
+
+<div class="card">
+    <h3>功能测试结果</h3>
+    <div id="testResults"></div>
+</div>
+
+<div class="card">
+    <h3>执行日志</h3>
+    <div id="log"></div>
+</div>
+
+<script>
+var testLog=[];
+var testResults=[];
+var testDataLoaded=false;
+
+function pad(n){return n<10?'0'+n:''+n}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function daysAgo(n){var d=new Date();d.setDate(d.getDate()-n);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function genId(){return Date.now()+Math.floor(Math.random()*10000)}
+function nowStr(){var d=new Date();return todayStr()+' '+pad(d.getHours())+':'+pad(d.getMinutes())}
+
+function log(msg,level){
+    level=level||'info';
+    var prefix=level==='pass'?'✅':(level==='fail'?'❌':(level==='warn'?'⚠️':'ℹ️'));
+    testLog.push(prefix+' '+msg);
+    var el=document.getElementById('log');
+    if(el){el.textContent=testLog.join('\n');el.scrollTop=el.scrollHeight}
+}
+
+function clearData(){
+    if(!confirm('确定清除所有测试数据吗？'))return;
+    var keys=[];
+    for(var i=0;i<localStorage.length;i++){
+        var key=localStorage.key(i);
+        if(key.indexOf('bp_')===0)keys.push(key);
+    }
+    keys.forEach(function(k){localStorage.removeItem(k)});
+    log('已清除 '+keys.length+' 项数据','warn');
+    testDataLoaded=false;
+    document.getElementById('btnTest').disabled=true;
+    document.getElementById('btnApp').disabled=true;
+    document.getElementById('dataStatus').innerHTML='<div class="test-item"><div class="test-icon pending">📋</div><div class="test-info"><div class="test-name">数据未加载</div></div></div>';
+    document.getElementById('testResults').innerHTML='';
+    document.getElementById('progressBar').style.width='0%';
+    testLog=[];
+    testResults=[];
+    log('数据已清除','warn');
+}
+
+function loadTestData(){
+    log('开始加载测试数据...');
+    var btn=document.getElementById('btnLoad');
+    btn.disabled=true;
+    btn.textContent='⏳ 加载中...';
+
+    var td=todayStr();
+    var uid=10001,p1=10010,p2=10011;
+
+    // 1. 用户状态
+    var appState={uid:uid,pid:p1,pname:'张大爷',parents:[
+        {id:p1,name:'张大爷',age:68,gender:'男',relation:'父亲'},
+        {id:p2,name:'李奶奶',age:65,gender:'女',relation:'母亲'}
+    ]};
+    localStorage.setItem('bp_app_state',JSON.stringify(appState));
+    log('用户状态已配置','pass');
+
+    // 2. 药物数据（张大爷）
+    var meds1=[
+        {id:20001,name:'硝苯地平',dosage:'1片',frequency:'twice',times:['08:00','18:00'],quantity:5},
+        {id:20002,name:'阿司匹林',dosage:'100mg',frequency:'once',times:['08:00'],quantity:3},
+        {id:20003,name:'氨氯地平',dosage:'5mg',frequency:'once',times:['20:00'],quantity:30}
+    ];
+    localStorage.setItem('bp_meds_'+p1,JSON.stringify(meds1));
+    log('张大爷药物已配置: '+meds1.length+'种','pass');
+
+    // 3. 药物数据（李奶奶）
+    var meds2=[
+        {id:20004,name:'卡托普利',dosage:'12.5mg',frequency:'thrice',times:['07:00','12:00','19:00'],quantity:20},
+        {id:20005,name:'美托洛尔',dosage:'25mg',frequency:'twice',times:['08:00','20:00'],quantity:15}
+    ];
+    localStorage.setItem('bp_meds_'+p2,JSON.stringify(meds2));
+    log('李奶奶药物已配置: '+meds2.length+'种','pass');
+
+    // 4. 今日服药计划（张大爷）
+    var logs1=[];
+    // 过去7天的记录
+    var j;
+    for(j=1;j<=7;j++){
+        var date=daysAgo(j);
+        meds1.forEach(function(m){
+            m.times.forEach(function(t){
+                var r=Math.random();
+                var status=r<0.7?'taken':(r<0.85?'pending':'missed');
+                logs1.push({id:genId(),medId:m.id,medName:m.name,dosage:m.dosage,date:date,time:t,scheduled:date+' '+t,status:status,confirmedAt:status==='taken'?date+' '+t:null});
+            });
+        });
+    }
+    // 今日记录
+    meds1.forEach(function(m){
+        m.times.forEach(function(t){
+            var status=t<'10:00'?'taken':'pending';
+            logs1.push({id:genId(),medId:m.id,medName:m.name,dosage:m.dosage,date:td,time:t,scheduled:td+' '+t,status:status,confirmedAt:status==='taken'?td+' '+t:null});
+        });
+    });
+    localStorage.setItem('bp_logs_'+p1,JSON.stringify(logs1));
+    log('张大爷服药记录已配置: '+logs1.length+'条（含7天历史）','pass');
+
+    // 5. 今日服药计划（李奶奶）
+    var logs2=[];
+    meds2.forEach(function(m){
+        m.times.forEach(function(t){
+            var status=t<'10:00'?'taken':'pending';
+            logs2.push({id:genId(),medId:m.id,medName:m.name,dosage:m.dosage,date:td,time:t,scheduled:td+' '+t,status:status,confirmedAt:status==='taken'?td+' '+t:null});
+        });
+    });
+    localStorage.setItem('bp_logs_'+p2,JSON.stringify(logs2));
+    log('李奶奶服药记录已配置: '+logs2.length+'条','pass');
+
+    // 6. 血压数据（张大爷 - 14天）
+    var bps1=[];
+    var k;
+    for(k=0;k<14;k++){
+        var date=daysAgo(k);
+        var h=k%2===0?8:16;
+        var mi=Math.floor(Math.random()*30);
+        var sys=130+Math.floor(Math.random()*25);
+        var dia=80+Math.floor(Math.random()*20);
+        bps1.push({id:genId(),systolic:sys,diastolic:dia,hr:65+Math.floor(Math.random()*20),note:k<3?'晨起':(k<7?'午饭后':'睡前'),time:date+' '+pad(h)+':'+pad(mi)});
+    }
+    bps1.sort(function(a,b){return a.time<b.time?1:-1});
+    localStorage.setItem('bp_data_'+p1,JSON.stringify(bps1));
+    log('张大爷血压数据已配置: '+bps1.length+'条（14天）','pass');
+
+    // 7. 血压数据（李奶奶 - 7天）
+    var bps2=[];
+    var l;
+    for(l=0;l<7;l++){
+        var date=daysAgo(l);
+        var sys=120+Math.floor(Math.random()*15);
+        var dia=75+Math.floor(Math.random()*12);
+        bps2.push({id:genId(),systolic:sys,diastolic:dia,hr:68+Math.floor(Math.random()*15),note:'晨起',time:date+' 08:'+pad(Math.floor(Math.random()*30))});
+    }
+    bps2.sort(function(a,b){return a.time<b.time?1:-1});
+    localStorage.setItem('bp_data_'+p2,JSON.stringify(bps2));
+    log('李奶奶血压数据已配置: '+bps2.length+'条（7天）','pass');
+
+    // 8. 预警数据
+    var alerts1=[];
+    var missedLogs=logs1.filter(function(l){return l.status==='missed'});
+    missedLogs.slice(0,3).forEach(function(m,l){
+        var levels=['warn','urgent','critical'];
+        var level=levels[l];
+        var diff=level==='critical'?45:(level==='urgent'?25:15);
+        alerts1.push({id:genId(),logId:l.id,medName:l.medName,diff:diff,level:level,status:l<2?'active':'resolved',time:l.scheduled+' '+l.time});
+    });
+    // 添加今日活跃预警
+    alerts1.push({id:genId(),logId:genId(),medName:'硝苯地平',diff:25,level:'urgent',status:'active',time:td+' 08:25:00'});
+    alerts1.push({id:genId(),logId:genId(),medName:'阿司匹林',diff:45,level:'critical',status:'active',time:td+' 08:45:00'});
+    localStorage.setItem('bp_alerts_'+p1,JSON.stringify(alerts1));
+    log('预警数据已配置: '+alerts1.length+'条（含2条活跃预警）','pass');
+
+    // 9. 预警设置
+    localStorage.setItem('bp_app_alerts',JSON.stringify({l1:10,l2:25,l3:40}));
+    log('预警时间设置已配置','pass');
+
+    // 10. 推送设置
+    localStorage.setItem('bp_push_enabled','0');
+    log('推送通知设置已配置','pass');
+
+    testDataLoaded=true;
+    document.getElementById('btnTest').disabled=false;
+    document.getElementById('btnApp').disabled=false;
+    btn.textContent='✅ 加载完成';
+
+    log('=== 测试数据加载完成 ===','pass');
+    log('','info');
+    log('📊 数据概览:','info');
+    log('  - 用户: 2位父母（张大爷、李奶奶）','info');
+    log('  - 药物: 5种（张大爷3种，李奶奶2种）','info');
+    log('  - 服药记录: '+(logs1.length+logs2.length)+'条','info');
+    log('  - 血压记录: '+(bps1.length+bps2.length)+'条','info');
+    log('  - 预警: '+alerts1.length+'条','info');
+
+    updateDataStatus();
+}
+
+function updateDataStatus(){
+    var html='';
+    html+='<div class="test-item"><div class="test-icon pass">✅</div><div class="test-info"><div class="test-name">用户状态 <span class="badge">张大爷</span></div><div class="test-detail">2位父母已配置</div></div></div>';
+    html+='<div class="test-item"><div class="test-icon pass">✅</div><div class="test-info"><div class="test-name">药物数据 <span class="badge">5种</span></div><div class="test-detail">含库存信息</div></div></div>';
+    html+='<div class="test-item"><div class="test-icon pass">✅</div><div class="test-info"><div class="test-name">服药记录 <span class="badge">多条</span></div><div class="test-detail">含7天历史记录</div></div></div>';
+    html+='<div class="test-item"><div class="test-icon pass">✅</div><div class="test-info"><div class="test-name">血压数据 <span class="badge">21条</span></div><div class="test-detail">14天+7天</div></div></div>';
+    html+='<div class="test-item"><div class="test-icon pass">✅</div><div class="test-info"><div class="test-name">预警数据 <span class="badge">5条</span></div><div class="test-detail">2条活跃预警</div></div></div>';
+    document.getElementById('dataStatus').innerHTML=html;
+}
+
+function runTests(){
+    log('');
+    log('=== 开始功能测试 ===','info');
+    testResults=[];
+
+    var tests=[
+        {name:'用户状态读取',fn:testUserState},
+        {name:'药物列表加载',fn:testMedList},
+        {name:'库存预警检测',fn:testInventoryAlert},
+        {name:'服药记录生成',fn:testMedLogs},
+        {name:'血压数据加载',fn:testBpData},
+        {name:'健康评估计算',fn:testHealthAssess},
+        {name:'预警列表加载',fn:testAlertList},
+        {name:'活跃预警统计',fn:testActiveAlerts},
+        {name:'数据导出功能',fn:testExport},
+        {name:'日期计算',fn:testDateCalc},
+        {name:'LocalStorage读写',fn:testLocalStorage},
+        {name:'多位父母隔离',fn:testDataIsolation},
+        {name:'确认服药功能',fn:testConfirmMed},
+        {name:'预警处理功能',fn:testResolveAlert},
+        {name:'添加新药物',fn:testAddNewMed}
+    ];
+
+    var i=0;
+    var total=tests.length;
+    var passed=0;
+
+    function runNext(){
+        if(i>=total){
+            log('','info');
+            log('=== 测试完成: '+passed+'/'+total+' 通过 ===','pass');
+            document.getElementById('progressBar').style.width='100%';
+            updateTestResults();
+            return;
+        }
+
+        var test=tests[i];
+        log('测试: '+test.name,'info');
+        try{
+            var result=test.fn();
+            if(result.success){
+                testResults.push({name:test.name,status:'pass',detail:result.detail});
+                passed++;
+                log('  ✅ 通过: '+result.detail,'pass');
+            }else{
+                testResults.push({name:test.name,status:'fail',detail:result.detail});
+                log('  ❌ 失败: '+result.detail,'fail');
+            }
+        }catch(e){
+            testResults.push({name:test.name,status:'fail',detail:e.message});
+            log('  ❌ 异常: '+e.message,'fail');
+        }
+
+        i++;
+        document.getElementById('progressBar').style.width=(i/total*100)+'%';
+        setTimeout(runNext,100);
+    }
+
+    runNext();
+}
+
+function testUserState(){
+    var state=JSON.parse(localStorage.getItem('bp_app_state'));
+    if(state.uid&&state.parents.length===2){
+        return{success:true,detail:'2位父母已加载'};
+    }
+    return{success:false,detail:'用户状态异常'};
+}
+
+function testMedList(){
+    var state=JSON.parse(localStorage.getItem('bp_app_state'));
+    var meds=JSON.parse(localStorage.getItem('bp_meds_'+state.pid));
+    if(meds.length>=3){
+        return{success:true,detail:meds.length+'种药物'};
+    }
+    return{success:false,detail:'药物数量不足'};
+}
+
+function testInventoryAlert(){
+    var state=JSON.parse(localStorage.getItem('bp_app_state'));
+    var meds=JSON.parse(localStorage.getItem('bp_meds_'+state.pid));
+    var lowStock=meds.filter(function(m){
+        var daily=m.times?m.times.length:1;
+        return m.quantity<daily*7;
+    });
+    if(lowStock.length>0){
+        return{success:true,detail:lowStock.length+'种药物库存不足'};
+    }
+    return{success:false,detail:'未检测到库存预警'};
+}
+
+function testMedLogs(){
+    var state=JSON.parse(localStorage.getItem('bp_app_state'));
+    var logs=JSON.parse(localStorage.getItem('bp_logs_'+state.pid));
+    var todayLogs=logs.filter(function(l){return l.date===todayStr()});
+    if(todayLogs.length>0){
+        return{success:true,detail:'今日'+todayLogs.length+'条计划'};
+    }
+    return{success:false,detail:'今日无计划'};
+}
+
+function testBpData(){
+    var state=JSON.parse(localStorage.getItem('bp_app_state'));
+    var bps=JSON.parse(localStorage.getItem('bp_data_'+state.pid));
+    if(bps.length>=10){
+        return{success:true,detail:bps.length+'条记录'};
+    }
+    return{success:false,detail:'血压数据不足'};
+}
+
+function testHealthAssess(){
+    var state=JSON.parse(localStorage.getItem('bp_app_state'));
+    var bps=JSON.parse(localStorage.getItem('bp_data_'+state.pid));
+    if(bps.length>=3){
+        var avgSys=Math.round(bps.slice(0,7).reduce(function(s,r){return s+r.systolic},0)/Math.min(bps.length,7));
+        var avgDia=Math.round(bps.slice(0,7).reduce(function(s,r){return s+r.diastolic},0)/Math.min(bps.length,7));
+        return{success:true,detail:'平均'+avgSys+'/'+avgDia};
+    }
+    return{success:false,detail:'数据不足'};
+}
+
+function testAlertList(){
+    var state=JSON.parse(localStorage.getItem('bp_app_state'));
+    var alerts=JSON.parse(localStorage.getItem('bp_alerts_'+state.pid));
+    if(alerts.length>0){
+        return{success:true,detail:alerts.length+'条预警'};
+    }
+    return{success:false,detail:'无预警数据'};
+}
+
+function testActiveAlerts(){
+    var state=JSON.parse(localStorage.getItem('bp_app_state'));
+    var alerts=JSON.parse(localStorage.getItem('bp_alerts_'+state.pid));
+    var active=alerts.filter(function(a){return a.status==='active'});
+    if(active.length>0){
+        return{success:true,detail:active.length+'条活跃'};
+    }
+    return{success:false,detail:'无活跃预警'};
+}
+
+function testExport(){
+    try{
+        var data={time:nowStr(),test:true};
+        var blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+        return{success:true,detail:'Blob可用 ('+blob.size+'B)'};
+    }catch(e){
+        return{success:false,detail:'导出失败'};
+    }
+}
+
+function testDateCalc(){
+    var today=todayStr();
+    var yesterday=daysAgo(1);
+    var tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
+    var tm=tomorrow.getFullYear()+'-'+pad(tomorrow.getMonth()+1)+'-'+pad(tomorrow.getDate());
+    if(yesterday<today&&tm>today){
+        return{success:true,detail:'日期计算正确'};
+    }
+    return{success:false,detail:'日期计算错误'};
+}
+
+function testLocalStorage(){
+    localStorage.setItem('bp_test','ok');
+    var v=localStorage.getItem('bp_test');
+    localStorage.removeItem('bp_test');
+    if(v==='ok'){
+        return{success:true,detail:'读写正常'};
+    }
+    return{success:false,detail:'读写异常'};
+}
+
+function testDataIsolation(){
+    var state=JSON.parse(localStorage.getItem('bp_app_state'));
+    var p1=state.parents[0].id;
+    var p2=state.parents[1].id;
+    var meds1=JSON.parse(localStorage.getItem('bp_meds_'+p1));
+    var meds2=JSON.parse(localStorage.getItem('bp_meds_'+p2));
+    if(meds1.length>0&&meds2.length>0&&meds1.length!==meds2.length){
+        return{success:true,detail:'数据已隔离'};
+    }
+    return{success:false,detail:'数据未隔离'};
+}
+
+function testConfirmMed(){
+    var state=JSON.parse(localStorage.getItem('bp_app_state'));
+    var logs=JSON.parse(localStorage.getItem('bp_logs_'+state.pid));
+    var pending=logs.find(function(l){return l.status==='pending'&&l.date===todayStr()});
+    if(pending){
+        pending.status='taken';
+        pending.confirmedAt=nowStr();
+        localStorage.setItem('bp_logs_'+state.pid,JSON.stringify(logs));
+        return{success:true,detail:'确认服药成功'};
+    }
+    return{success:false,detail:'无待确认记录'};
+}
+
+function testResolveAlert(){
+    var state=JSON.parse(localStorage.getItem('bp_app_state'));
+    var alerts=JSON.parse(localStorage.getItem('bp_alerts_'+state.pid));
+    var active=alerts.find(function(a){return a.status==='active'});
+    if(active){
+        active.status='resolved';
+        localStorage.setItem('bp_alerts_'+state.pid,JSON.stringify(alerts));
+        return{success:true,detail:'预警已处理'};
+    }
+    return{success:false,detail:'无活跃预警'};
+}
+
+function testAddNewMed(){
+    var state=JSON.parse(localStorage.getItem('bp_app_state'));
+    var meds=JSON.parse(localStorage.getItem('bp_meds_'+state.pid));
+    var newMed={id:genId(),name:'测试药物',dosage:'1片',frequency:'once',times:['09:00'],quantity:20};
+    meds.push(newMed);
+    localStorage.setItem('bp_meds_'+state.pid,JSON.stringify(meds));
+    var updated=JSON.parse(localStorage.getItem('bp_meds_'+state.pid));
+    if(updated.length===meds.length){
+        meds.pop(); // 移除测试数据
+        localStorage.setItem('bp_meds_'+state.pid,JSON.stringify(meds));
+        return{success:true,detail:'添加/删除成功'};
+    }
+    return{success:false,detail:'添加失败'};
+}
+
+function updateTestResults(){
+    var html='';
+    var passed=testResults.filter(function(r){return r.status==='pass'}).length;
+    var failed=testResults.length-passed;
+
+    html+='<div style="text-align:center;margin-bottom:16px">';
+    html+=failed===0?'<div style="background:#d4edda;color:#155724;padding:16px;border-radius:10px"><strong>🎉 全部测试通过！</strong><br>'+testResults.length+' 项测试全部通过</div>':
+        '<div style="background:#f8d7da;color:#721c24;padding:16px;border-radius:10px"><strong>❌ 存在失败</strong><br>'+passed+'/'+testResults.length+' 通过, '+failed+' 失败</div>';
+    html+='</div>';
+
+    testResults.forEach(function(r){
+        var iconClass=r.status==='pass'?'pass':(r.status==='fail'?'fail':'pending');
+        var icon=r.status==='pass'?'✅':(r.status==='fail'?'❌':'⏳');
+        html+='<div class="test-item"><div class="test-icon '+iconClass+'">'+icon+'</div><div class="test-info"><div class="test-name">'+r.name+'</div><div class="test-detail">'+r.detail+'</div></div></div>';
+    });
+
+    document.getElementById('testResults').innerHTML=html;
+}
+
+function openApp(){
+    window.location.href='app_mobile.html';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<view class="container">
+  <view class="card">
+    <view class="card-header">
+      <view class="card-title">我的药物</view>
+      <view class="card-action" bindtap="showAddModal">+ 添加</view>
+    </view>
+    <view wx:if="{{medList.length > 0}}">
+      <view class="med-item" wx:for="{{medList}}" wx:key="id">
+        <view class="med-icon {{item.daysLeft < 7 ? 'orange' : 'blue'}}">💊</view>
+        <view class="med-info">
+          <view class="med-name">{{item.name}} {{item.dosage}} <text class="tag {{item.daysLeft < 7 ? 'tag-red' : 'tag-green'}}">{{item.daysLeft < 7 ? '库存不足' : '充足'}}</text></view>
+          <view class="med-time">{{item.timesStr}} · 剩余{{item.daysLeft}}天</view>
+        </view>
+        <button class="btn btn-sm btn-danger" bindtap="deleteMed" data-id="{{item.id}}">删除</button>
+      </view>
+    </view>
+    <view wx:else class="empty-state">
+      <view class="empty-icon">💊</view>
+      <view class="empty-text">暂无药物，请添加</view>
+    </view>
+  </view>
+  <view class="card">
+    <view class="card-title">服药记录</view>
+    <view wx:if="{{logList.length > 0}}">
+      <view class="med-item" wx:for="{{logList}}" wx:key="id">
+        <view class="med-icon {{item.iconClass}}">{{item.icon}}</view>
+        <view class="med-info">
+          <view class="med-name">{{item.medName}}</view>
+          <view class="med-time">{{item.scheduled}} · {{item.statusText}}</view>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="empty-state">
+      <view class="empty-icon">📋</view>
+      <view class="empty-text">暂无服药记录</view>
+    </view>
+  </view>
+</view>
+
+<view wx:if="{{showModal}}" class="modal-mask" bindtap="hideAddModal">
+  <view class="modal-content" catchtap="stopPropagation">
+    <view class="modal-title">添加药物</view>
+    <view class="form-group"><view class="form-label">药物名称</view><input class="form-input" value="{{form.name}}" bindinput="onNameInput" placeholder="如：硝苯地平" /></view>
+    <view class="form-group"><view class="form-label">剂量</view><input class="form-input" value="{{form.dosage}}" bindinput="onDosageInput" placeholder="如：1片、100mg" /></view>
+    <view class="form-group"><view class="form-label">服药频次</view><picker bindchange="onFreqChange" value="{{freqIndex}}" range="{{freqOptions}}"><view class="form-input">{{freqOptions[freqIndex]}}</view></picker></view>
+    <view class="form-group"><view class="form-label">库存数量</view><input class="form-input" type="number" value="{{form.qty}}" bindinput="onQtyInput" placeholder="30" /></view>
+    <button class="btn" bindtap="addMedication">保存</button>
+    <button class="btn btn-danger" bindtap="hideAddModal">取消</button>
+  </view>
+</view>

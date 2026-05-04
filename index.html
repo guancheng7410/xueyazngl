@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>血压守护 - 智能服药提醒系统</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Microsoft YaHei',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px}
+        .container{max-width:1200px;margin:0 auto}
+        h1{color:#fff;text-align:center;margin-bottom:25px;font-size:2.3em;text-shadow:2px 2px 4px rgba(0,0,0,.2)}
+        .card{background:#fff;border-radius:15px;padding:25px;margin-bottom:20px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+        .card h2{color:#333;margin-bottom:15px;border-bottom:2px solid #667eea;padding-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+        .form-group{margin-bottom:15px}
+        label{display:block;margin-bottom:5px;color:#333;font-weight:500}
+        input,select{width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:8px;font-size:16px;transition:border-color .3s}
+        input:focus,select:focus{outline:0;border-color:#667eea}
+        button{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;border:none;padding:12px 30px;border-radius:8px;font-size:16px;cursor:pointer;transition:transform .2s;margin:5px}
+        button:hover{transform:translateY(-2px)}
+        button.danger{background:#ff6b6b}
+        button.confirm{background:#51cf66}
+        button.small{padding:6px 16px;font-size:14px}
+        .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
+        .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:12px}
+        .stat-item{text-align:center;padding:14px;background:#f5f7ff;border-radius:10px}
+        .stat-value{font-size:1.8em;font-weight:700;color:#667eea}
+        .stat-label{color:#666;font-size:.85em}
+        .list-box{max-height:400px;overflow-y:auto}
+        .list-item{display:flex;justify-content:space-between;align-items:center;padding:12px;background:#f9f9f9;border-radius:8px;margin-bottom:8px;flex-wrap:wrap;gap:10px}
+        .badge{padding:4px 12px;border-radius:4px;font-size:.85em;white-space:nowrap}
+        .bg-yellow{background:#fff3cd;color:#856404}
+        .bg-green{background:#d4edda;color:#155724}
+        .bg-red{background:#f8d7da;color:#721c24}
+        .bg-blue{background:#d0ebff;color:#1864ab}
+        .tag-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+        .tag{background:#e7f5ff;color:#1971c2;padding:4px 10px;border-radius:20px;font-size:.85em}
+        .nav-tabs{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+        .nav-tab{padding:10px 20px;background:rgba(255,255,255,.3);color:#fff;border-radius:8px;cursor:pointer;transition:.3s}
+        .nav-tab.active,.nav-tab:hover{background:#fff;color:#667eea}
+        .tab-content{display:none}
+        .tab-content.active{display:block}
+        .alert-card{padding:14px;border-radius:8px;margin-bottom:8px;color:#fff}
+        .alert-yellow{background:#fab005}
+        .alert-red{background:#fa5252}
+        .alert-critical{background:#b33939;animation:pulse 1s infinite}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
+        .status-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+        .dot-pending{background:#fab005}
+        .dot-taken{background:#51cf66}
+        .dot-missed{background:#ff6b6b}
+        .empty{text-align:center;color:#999;padding:40px}
+        .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:12px 30px;border-radius:8px;z-index:2000;animation:toastIn 2s forwards}
+        @keyframes toastIn{0%{opacity:0}10%{opacity:1}80%{opacity:1}100%{opacity:0}}
+        .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center}
+        .modal-box{background:#fff;border-radius:15px;padding:30px;max-width:400px;width:90%;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+        .modal-box h3{margin-bottom:12px}
+        .modal-box p{color:#666;margin-bottom:18px}
+        .info-bar{padding:10px 15px;background:#e7f5ff;border-radius:8px;margin-bottom:15px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+        .info-bar span{color:#1864ab;font-size:.9em}
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🩺 血压守护 - 智能服药提醒</h1>
+
+    <div class="info-bar" id="contextBar">
+        <span>⚙️ 请先完成初始化设置</span>
+    </div>
+
+    <div class="nav-tabs" id="navTabs" style="display:none">
+        <a class="nav-tab active" data-tab="dashboard">📊 首页</a>
+        <a class="nav-tab" data-tab="logs">📋 服药记录</a>
+        <a class="nav-tab" data-tab="medication">💊 药物管理</a>
+        <a class="nav-tab" data-tab="bp">🩺 血压管理</a>
+        <a class="nav-tab" data-tab="family">👨‍👩‍👧 家庭管理</a>
+        <a class="nav-tab" data-tab="alerts">🚨 预警中心</a>
+    </div>
+
+    <div id="setup" class="tab-content active">
+        <div class="card">
+            <h2>🔧 系统初始化</h2>
+            <div id="setupStep1">
+                <h3>第一步：创建用户</h3>
+                <div class="grid2">
+                    <div class="form-group"><label>昵称</label><input type="text" id="sNickname" placeholder="如：小明"></div>
+                    <div class="form-group"><label>手机号</label><input type="text" id="sPhone" placeholder="如：13800138000"></div>
+                </div>
+                <button onclick="setupCreateUser()">创建用户</button>
+            </div>
+            <div id="setupStep2" style="display:none">
+                <h3>第二步：创建家庭组</h3>
+                <div class="form-group"><label>家庭名称</label><input type="text" id="sFamilyName" placeholder="如：我的家庭"></div>
+                <button onclick="setupCreateFamily()">创建家庭组</button>
+            </div>
+            <div id="setupStep3" style="display:none">
+                <h3>第三步：添加被看护者（父母）</h3>
+                <div class="grid2">
+                    <div class="form-group"><label>姓名 *</label><input type="text" id="sParentName" placeholder="如：张大爷"></div>
+                    <div class="form-group"><label>年龄</label><input type="number" id="sParentAge" value="65"></div>
+                </div>
+                <div class="form-group">
+                    <label>性别</label>
+                    <select id="sParentGender"><option value="男">男</option><option value="女">女</option></select>
+                </div>
+                <button onclick="setupAddParent()">完成初始化 → 进入系统</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard" class="tab-content">
+        <div class="grid2">
+            <div class="card">
+                <h2>📊 服药统计</h2>
+                <div class="stats-grid">
+                    <div class="stat-item"><div class="stat-value" id="dTotal">0</div><div class="stat-label">今日应服药</div></div>
+                    <div class="stat-item"><div class="stat-value" id="dTaken">0</div><div class="stat-label">已服药</div></div>
+                    <div class="stat-item"><div class="stat-value" id="dPending">0</div><div class="stat-label">待服药</div></div>
+                    <div class="stat-item"><div class="stat-value" id="dMissed">0</div><div class="stat-label">已漏服</div></div>
+                </div>
+            </div>
+            <div class="card">
+                <h2>🩺 血压概览</h2>
+                <div id="bpOverview" class="list-box"><div class="empty">暂无血压数据</div></div>
+            </div>
+        </div>
+        <div class="card">
+            <h2>💊 今日服药计划</h2>
+            <div id="dTodayLogs" class="list-box"><div class="empty">暂无数据</div></div>
+        </div>
+        <div class="card">
+            <h2>🚨 最新预警</h2>
+            <div id="dAlerts" class="list-box"><div class="empty">✅ 暂无预警</div></div>
+        </div>
+    </div>
+
+    <div id="logs" class="tab-content">
+        <div class="card">
+            <h2>📋 今日服药记录
+                <div>
+                    <button onclick="addTestData()" class="small confirm">🧪 添加测试数据</button>
+                    <button onclick="generateLogs()" class="small">🔄 生成今日记录</button>
+                </div>
+            </h2>
+            <div id="lTodayLogs" class="list-box"><div class="empty">暂无服药记录</div></div>
+        </div>
+        <div class="card">
+            <h2>➕ 手动添加服药记录</h2>
+            <div class="grid2">
+                <div class="form-group"><label>服药时间 *</label><input type="datetime-local" id="lManualTime"></div>
+                <div class="form-group"><label>药物名称</label><input type="text" id="lManualName" placeholder="如：硝苯地平"></div>
+            </div>
+            <div class="grid2">
+                <div class="form-group"><label>剂量</label><input type="text" id="lManualDosage" placeholder="如：1片"></div>
+                <div class="form-group">
+                    <label>状态</label>
+                    <select id="lManualStatus">
+                        <option value="taken">已服用</option>
+                        <option value="pending" selected>待服用</option>
+                        <option value="missed">已漏服</option>
+                    </select>
+                </div>
+            </div>
+            <button onclick="addManualLog()">添加记录</button>
+        </div>
+        <div class="card">
+            <h2>📅 历史记录</h2>
+            <div id="lHistoryLogs" class="list-box"><div class="empty">暂无历史记录</div></div>
+        </div>
+    </div>
+
+    <div id="medication" class="tab-content">
+        <div class="card">
+            <h2>💊 添加药物</h2>
+            <div class="grid2">
+                <div class="form-group"><label>药物名称 *</label><input type="text" id="mName" placeholder="如：硝苯地平"></div>
+                <div class="form-group"><label>剂量</label><input type="text" id="mDosage" placeholder="如：1片、5mg"></div>
+            </div>
+            <div class="grid2">
+                <div class="form-group">
+                    <label>服药频次</label>
+                    <select id="mFrequency"><option value="once">每日一次</option><option value="twice" selected>每日两次</option><option value="thrice">每日三次</option></select>
+                </div>
+                <div class="form-group"><label>服药时间（逗号分隔）*</label><input type="text" id="mTimes" placeholder='如：08:00, 18:00'></div>
+            </div>
+            <div class="grid2">
+                <div class="form-group"><label>开始日期</label><input type="date" id="mStartDate"></div>
+                <div class="form-group"><label>结束日期（可选）</label><input type="date" id="mEndDate"></div>
+            </div>
+            <button onclick="addMedication()">添加药物</button>
+        </div>
+        <div class="card">
+            <h2>📦 药物列表 <button onclick="generateLogs()" class="small" style="margin-left:15px">🔄 生成今日记录</button></h2>
+            <div id="mList" class="list-box"><div class="empty">加载中...</div></div>
+        </div>
+    </div>
+
+    <div id="bp" class="tab-content">
+        <div class="card">
+            <h2>🩺 记录血压</h2>
+            <div class="grid2">
+                <div class="form-group"><label>收缩压（高压）*</label><input type="number" id="bpSystolic" placeholder="如：120"></div>
+                <div class="form-group"><label>舒张压（低压）*</label><input type="number" id="bpDiastolic" placeholder="如：80"></div>
+            </div>
+            <div class="grid2">
+                <div class="form-group"><label>心率</label><input type="number" id="bpHeartRate" placeholder="如：72"></div>
+                <div class="form-group"><label>备注</label><input type="text" id="bpNote" placeholder="如：饭后测量"></div>
+            </div>
+            <button onclick="addBpRecord()">记录血压</button>
+        </div>
+        <div class="grid2">
+            <div class="card">
+                <h2>📈 趋势分析</h2>
+                <div id="bpAnalysis"><div class="empty">暂无数据</div></div>
+            </div>
+            <div class="card">
+                <h2>📋 历史记录</h2>
+                <div id="bpList" class="list-box"><div class="empty">暂无记录</div></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="family" class="tab-content">
+        <div class="card">
+            <h2>👨‍👩‍👧 家庭信息</h2>
+            <div id="fInfo" class="list-box"><div class="empty">加载中...</div></div>
+        </div>
+        <div class="card">
+            <h2>➕ 添加被看护者</h2>
+            <div class="grid2">
+                <div class="form-group"><label>姓名 *</label><input type="text" id="fName" placeholder="如：李大妈"></div>
+                <div class="form-group"><label>年龄</label><input type="number" id="fAge" value="65"></div>
+            </div>
+            <div class="form-group">
+                <label>性别</label>
+                <select id="fGender"><option value="男">男</option><option value="女">女</option></select>
+            </div>
+            <button onclick="addFamilyParent()">添加被看护者</button>
+        </div>
+        <div class="card">
+            <h2>🔗 邀请成员</h2>
+            <div style="padding:15px;background:#f0f0ff;border-radius:8px;">
+                <strong>邀请码：</strong><span id="fInviteCode" style="font-size:1.5em;color:#667eea;">---</span>
+            </div>
+            <div style="margin-top:15px">
+                <input type="text" id="fJoinCode" placeholder="输入别人的邀请码加入" style="width:200px;display:inline;margin-right:10px">
+                <button onclick="joinFamily()" class="small">加入家庭</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="alerts" class="tab-content">
+        <div class="card">
+            <h2>🚨 实时预警 <button onclick="checkAlerts()" class="small" style="margin-left:15px">🔄 刷新检测</button></h2>
+            <div id="aList" class="list-box"><div class="empty">✅ 暂无预警</div></div>
+        </div>
+        <div class="card">
+            <h2>⏰ 预警设置</h2>
+            <div class="grid2">
+                <div class="form-group"><label>一级预警（分钟）</label><input type="number" id="aLevel1" value="10"></div>
+                <div class="form-group"><label>二级预警（分钟）</label><input type="number" id="aLevel2" value="25"></div>
+                <div class="form-group"><label>紧急预警（分钟）</label><input type="number" id="aLevel3" value="40"></div>
+            </div>
+            <button onclick="saveAlertConfig()">保存设置</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var API='http://localhost:5000/api';
+var state={userId:null,familyGroupId:null,parentId:null,parentName:''};
+
+function toast(m){var t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(function(){if(t.parentNode)t.parentNode.removeChild(t)},2100)}
+
+function api(method,url,body,cb){
+    var opt={method:method,headers:{'Content-Type':'application/json'}};
+    if(body)opt.body=JSON.stringify(body);
+    fetch(API+url,opt).then(function(r){
+        if(r.status===204)return null;
+        return r.json();
+    }).then(function(data){cb(null,data)}).catch(function(e){cb(e,null)})
+}
+
+function updateBar(){
+    var b=document.getElementById('contextBar');
+    if(state.parentId){
+        b.innerHTML='<span>👤 用户ID:'+state.userId+'</span><span>🏠 家庭组ID:'+state.familyGroupId+'</span><span>👴 被看护者:'+state.parentName+' (ID:'+state.parentId+')</span><button class="small danger" onclick="resetAll()">重置</button>';
+    }else{b.innerHTML='<span>⚙️ 请先完成初始化设置</span>'}
+}
+
+function showTab(t){
+    var tabs=document.querySelectorAll('#navTabs .nav-tab');
+    for(var i=0;i<tabs.length;i++)tabs[i].classList.remove('active');
+    var cs=document.querySelectorAll('.tab-content');
+    for(var j=0;j<cs.length;j++)cs[j].classList.remove('active');
+    document.getElementById(t).classList.add('active');
+    var at=document.querySelector('[data-tab="'+t+'"]');
+    if(at)at.classList.add('active');
+    refreshTab(t)
+}
+
+function refreshTab(t){
+    if(t==='dashboard')loadDashboard();
+    else if(t==='logs')loadLogsTab();
+    else if(t==='medication')loadMedications();
+    else if(t==='bp'){loadBpRecords();loadBpAnalysis()}
+    else if(t==='family')loadFamilyInfo();
+    else if(t==='alerts')loadAlerts()
+}
+
+function loadLogsTab(){
+    if(!state.parentId)return;
+    api('POST','/logs/generate-daily/'+state.parentId,null,function(){
+        var today=new Date().toISOString().split('T')[0];
+        api('GET','/logs/parent/'+state.parentId+'?date='+today,null,function(e,logs){
+            renderLogList('lTodayLogs',logs||[]);
+        });
+        api('GET','/logs/parent/'+state.parentId,null,function(e,allLogs){
+            var history=[];
+            var td=new Date().toISOString().split('T')[0];
+            allLogs=allLogs||[];
+            for(var i=0;i<allLogs.length;i++){
+                if(!allLogs[i].scheduled_time||!allLogs[i].scheduled_time.startsWith(td))history.push(allLogs[i])
+            }
+            var c=document.getElementById('lHistoryLogs');
+            if(!history.length){c.innerHTML='<div class="empty">暂无历史记录</div>';return}
+            var h='';
+            for(var j=0;j<history.length;j++){
+                var l=history[j];var sc=l.status==='taken'?'bg-green':(l.status==='missed'?'bg-red':'bg-yellow');
+                var sx=l.status==='taken'?'已服用':(l.status==='missed'?'已漏服':'待服用');
+                var dt=l.scheduled_time?new Date(l.scheduled_time).toLocaleString('zh-CN'):'--';
+                h+='<div class="list-item"><div><strong>💊</strong> '+dt+'</div><span class="badge '+sc+'">'+sx+'</span></div>'
+            }
+            c.innerHTML=h
+        });
+    })
+}
+
+function loadDashboard(){
+    if(!state.parentId)return;
+    api('POST','/logs/generate-daily/'+state.parentId,null,function(){
+        loadTodayLogs(function(logs){
+            var taken=0,pending=0,missed=0;
+            for(var i=0;i<logs.length;i++){
+                if(logs[i].status==='taken')taken++;
+                else if(logs[i].status==='missed')missed++;
+                else pending++
+            }
+            document.getElementById('dTotal').textContent=logs.length;
+            document.getElementById('dTaken').textContent=taken;
+            document.getElementById('dPending').textContent=pending;
+            document.getElementById('dMissed').textContent=missed;
+            renderLogList('dTodayLogs',logs)
+        });
+    });
+    loadBpOverview();
+    loadAlertOverview()
+}
+
+function loadTodayLogs(cb){
+    var today=new Date().toISOString().split('T')[0];
+    api('GET','/logs/parent/'+state.parentId+'?date='+today,null,function(e,d){cb(d||[])})
+}
+
+function renderLogList(id,logs){
+    var c=document.getElementById(id);if(!logs.length){c.innerHTML='<div class="empty">暂无数据</div>';return}
+    var h='';
+    for(var i=0;i<logs.length;i++){
+        var l=logs[i];
+        var st=l.status==='taken'?'bg-green':(l.status==='missed'?'bg-red':'bg-yellow');
+        var stx=l.status==='taken'?'已服用':(l.status==='missed'?'已漏服':'待服用');
+        var dot=l.status==='taken'?'dot-taken':(l.status==='missed'?'dot-missed':'dot-pending');
+        var tStr=l.scheduled_time?new Date(l.scheduled_time).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}):'--';
+        var nm=l.medication_name||(l.note||'手动记录');
+        var btn=l.status==='pending'?'<button class="small confirm" onclick="confirmLog('+l.id+')">确认服用</button>':'';
+        h+='<div class="list-item"><div><span class="status-dot '+dot+'"></span><strong>💊 '+nm+'</strong> 计划：'+tStr+'</div><span class="badge '+st+'">'+stx+'</span>'+btn+'</div>'
+    }
+    c.innerHTML=h
+}
+
+function confirmLog(id){
+    api('POST','/logs/'+id+'/confirm',{status:'taken',user_id:state.userId},function(e,d){
+        if(e){toast('确认失败');return}
+        toast('已确认服药！');refreshTab('dashboard');loadAlerts()
+    })
+}
+
+function generateLogs(){
+    if(!state.parentId){toast('请先完成初始化');return}
+    api('POST','/logs/generate-daily/'+state.parentId,null,function(e,d){
+        if(e){toast('生成失败');return}
+        toast('已生成 '+d.count+' 条服药记录！');
+        loadMedications();loadLogsTab();loadDashboard()
+    })
+}
+
+function addManualLog(){
+    if(!state.parentId){toast('请先完成初始化');return}
+    var t=document.getElementById('lManualTime').value;
+    var n=document.getElementById('lManualName').value.trim();
+    var d=document.getElementById('lManualDosage').value.trim();
+    var s=document.getElementById('lManualStatus').value;
+    if(!t){toast('请选择服药时间');return}
+    if(!n){toast('请填写药物名称');return}
+    var now=new Date().toISOString();
+    api('POST','/logs',{
+        parent_id:state.parentId,
+        scheduled_time:new Date(t).toISOString(),
+        status:s,
+        actual_time:s==='taken'?now:null,
+        confirmed_by:s==='taken'?state.userId:null,
+        note:n+' '+(d||'')
+    },function(e,d){
+        if(e){toast('添加失败');return}
+        toast('记录已添加！');
+        document.getElementById('lManualName').value='';
+        document.getElementById('lManualDosage').value='';
+        setDefaultTime();
+        loadLogsTab();loadDashboard()
+    })
+}
+
+function addTestData(){
+    if(!state.parentId){toast('请先完成初始化');return}
+    var now=new Date();
+    var count=0;
+    var meds=[
+        {name:'硝苯地平',dosage:'1片',frequency:'twice',times:['08:00','18:00']},
+        {name:'缬沙坦',dosage:'1片',frequency:'once',times:['08:00']},
+        {name:'阿司匹林',dosage:'1片',frequency:'once',times:['08:30']}
+    ];
+    function nextMed(idx){
+        if(idx>=meds.length){
+            api('POST','/logs/generate-daily/'+state.parentId,null,function(e,d){
+                count+=d.count||0;
+                toast('已添加测试数据：'+meds.length+'种药物，'+count+'条记录！');
+                loadMedications();loadLogsTab();loadDashboard()
+            });
+            return
+        }
+        var m=meds[idx];
+        m.parent_id=state.parentId;
+        m.start_date=now.toISOString().split('T')[0];
+        m.reminder_enabled=true;
+        api('POST','/medications',m,function(e,d){
+            if(!e)count++;
+            nextMed(idx+1)
+        })
+    }
+    nextMed(0)
+}
+
+function loadBpOverview(){
+    if(!state.parentId)return;
+    api('GET','/blood-pressure/analysis/'+state.parentId,null,function(e,d){
+        var c=document.getElementById('bpOverview');
+        if(!d||!d.latest){c.innerHTML='<div class="empty">暂无血压数据</div>';return}
+        var s=d.latest;var sc=s.status==='normal'?'bg-green':(s.status==='elevated'?'bg-yellow':'bg-red');
+        var stx=s.status==='normal'?'正常':(s.status==='elevated'?'偏高':'高血压');
+        c.innerHTML='<div class="list-item"><div><strong>最新血压</strong></div><div style="font-size:1.5em;font-weight:700">'+s.systolic+'/'+s.diastolic+'<span style="font-size:.6em;margin-left:10px" class="badge '+sc+'">'+stx+'</span></div></div>'+
+            '<div class="stats-grid" style="margin-top:10px"><div class="stat-item"><div class="stat-value">'+d.total_records+'</div><div class="stat-label">总记录数</div></div>'+
+            '<div class="stat-item"><div class="stat-value">'+d.average.systolic+'/'+d.average.diastolic+'</div><div class="stat-label">平均值</div></div></div>'
+    })
+}
+
+function loadAlertOverview(){
+    api('GET','/logs/parent/'+state.parentId+'?status=pending',null,function(e,logs){
+        var c=document.getElementById('dAlerts');
+        logs=logs||[];var now=new Date();
+        var warns=[];
+        for(var i=0;i<logs.length;i++){
+            var diff=Math.floor((now-new Date(logs[i].scheduled_time))/60000);
+            if(diff>=10)warns.push({name:'漏服药物',time:logs[i].scheduled_time,diff:diff})
+        }
+        if(!warns.length){c.innerHTML='<div class="empty">✅ 暂无预警</div>';return}
+        var h='';
+        for(var j=0;j<warns.length;j++){
+            var lvl=warns[j].diff>=40?'alert-critical':(warns[j].diff>=25?'alert-red':'alert-yellow');
+            h+='<div class="alert-card '+lvl+'"><strong>⚠ 漏服 '+warns[j].diff+' 分钟</strong><br>计划时间：'+new Date(warns[j].time).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})+'</div>'
+        }
+        c.innerHTML=h
+    })
+}
+
+function loadMedications(){
+    if(!state.parentId)return;
+    api('GET','/medications/parent/'+state.parentId,null,function(e,d){
+        var c=document.getElementById('mList');
+        if(!d||!d.length){c.innerHTML='<div class="empty">暂无药物，请添加</div>';return}
+        var fm={once:'每日一次',twice:'每日两次',thrice:'每日三次'};
+        var h='';
+        for(var i=0;i<d.length;i++){
+            var m=d[i];var times=m.times||[];
+            var th='';
+            for(var j=0;j<times.length;j++)th+='<span class="tag">⏰ '+times[j]+'</span>';
+            h+='<div class="list-item"><div><strong>💊 '+m.name+'</strong><br><span style="color:#666">剂量：'+(m.dosage||'--')+' | '+(fm[m.frequency]||'--')+'</span><div class="tag-list">'+th+'</div></div><button class="small danger" onclick="deleteMed('+m.id+')">删除</button></div>'
+        }
+        c.innerHTML=h
+    })
+}
+
+function addMedication(){
+    var timesRaw=document.getElementById('mTimes').value.trim();
+    var times=[];
+    if(timesRaw.startsWith('[')){
+        try{times=JSON.parse(timesRaw)}catch(e){times=[]}
+    }else if(timesRaw){
+        times=timesRaw.split(',').map(function(t){return t.trim()}).filter(function(t){return t});
+    }
+    var m={parent_id:state.parentId,name:document.getElementById('mName').value.trim(),dosage:document.getElementById('mDosage').value.trim(),
+        frequency:document.getElementById('mFrequency').value,times:times,
+        start_date:document.getElementById('mStartDate').value,end_date:document.getElementById('mEndDate').value||null,reminder_enabled:true};
+    if(!m.name){toast('请填写药物名称！');return}
+    if(!m.times||!m.times.length){toast('请填写服药时间（如：08:00, 18:00）');return}
+    api('POST','/medications',m,function(e,d){
+        if(e){toast('添加失败：'+e);return}
+        toast('药物添加成功！');
+        api('POST','/logs/generate-daily/'+state.parentId,null,function(){});
+        loadMedications();loadDashboard()
+    })
+}
+
+function deleteMed(id){
+    api('DELETE','/medications/'+id,null,function(e,d){
+        if(e){toast('删除失败');return}toast('药物已删除');loadMedications();loadDashboard()
+    })
+}
+
+function loadBpRecords(){
+    if(!state.parentId)return;
+    api('GET','/blood-pressure/parent/'+state.parentId,null,function(e,d){
+        var c=document.getElementById('bpList');
+        if(!d||!d.length){c.innerHTML='<div class="empty">暂无记录</div>';return}
+        var h='';
+        for(var i=0;i<d.length;i++){
+            var r=d[i];var s=r.systolic>=140||r.diastolic>=90?'bg-red':(r.systolic>=120||r.diastolic>=80?'bg-yellow':'bg-green');
+            var sx=r.systolic>=140||r.diastolic>=90?'高血压':(r.systolic>=120||r.diastolic>=80?'偏高':'正常');
+            var dt=new Date(r.measured_at).toLocaleDateString('zh-CN');
+            h+='<div class="list-item"><div><strong>'+r.systolic+'/'+r.diastolic+'</strong> '+dt+'</div><span class="badge '+s+'">'+sx+'</span></div>'
+        }
+        c.innerHTML=h
+    })
+}
+
+function loadBpAnalysis(){
+    if(!state.parentId)return;
+    api('GET','/blood-pressure/analysis/'+state.parentId,null,function(e,d){
+        var c=document.getElementById('bpAnalysis');
+        if(!d||!d.latest){c.innerHTML='<div class="empty">暂无数据</div>';return}
+        var statusText=d.latest.status==='normal'?'✅ 正常':(d.latest.status==='elevated'?'⚠️ 偏高':'🚨 高血压');
+        c.innerHTML='<div style="font-size:1.2em;margin-bottom:10px"><strong>'+statusText+'</strong></div>'+
+            '<div class="stats-grid"><div class="stat-item"><div class="stat-value">'+d.total_records+'</div><div class="stat-label">总记录</div></div>'+
+            '<div class="stat-item"><div class="stat-value">'+d.average.systolic+'/'+d.average.diastolic+'</div><div class="stat-label">平均血压</div></div>'+
+            '<div class="stat-item"><div class="stat-value">'+d.average.heart_rate+'</div><div class="stat-label">平均心率</div></div></div>'+
+            '<div style="margin-top:12px"><strong>最新：</strong>'+d.latest.systolic+'/'+d.latest.diastolic+' ('+new Date(d.latest.measured_at).toLocaleTimeString('zh-CN')+')</div>'
+    })
+}
+
+function addBpRecord(){
+    var r={parent_id:state.parentId,systolic:parseInt(document.getElementById('bpSystolic').value)||0,
+        diastolic:parseInt(document.getElementById('bpDiastolic').value)||0,
+        heart_rate:parseInt(document.getElementById('bpHeartRate').value)||null,
+        recorded_by:state.userId,note:document.getElementById('bpNote').value};
+    if(!r.systolic||!r.diastolic){toast('请填写收缩压和舒张压！');return}
+    api('POST','/blood-pressure',r,function(e,d){
+        if(e){toast('记录失败');return}toast('血压记录成功！');loadBpRecords();loadBpAnalysis();loadDashboard()
+    })
+}
+
+function loadFamilyInfo(){
+    if(!state.familyGroupId)return;
+    api('GET','/family/groups/'+state.familyGroupId+'/members',null,function(e,members){
+        api('GET','/family/groups/'+state.familyGroupId+'/parents',null,function(e2,parents){
+            var c=document.getElementById('fInfo');
+            var h='<div style="margin-bottom:10px"><strong>👨‍👩‍👧 被看护者：</strong></div>';
+            if(parents&&parents.length){
+                for(var i=0;i<parents.length;i++){
+                    var p=parents[i];h+='<div class="list-item" style="'+(p.id===state.parentId?'border:2px solid #667eea;':'')+'"><div><strong>'+p.name+'</strong> '+p.age+'岁 '+(p.gender||'')+'</div><button class="small" onclick="switchParent('+p.id+',\''+p.name+'\')">选择</button></div>'
+                }
+            }else{h+='<div class="empty">暂无被看护者</div>'}
+            h+='<div style="margin:12px 0"><strong>👥 成员列表：</strong></div>';
+            if(members&&members.length){
+                for(var j=0;j<members.length;j++){
+                    var m=members[j];h+='<div class="list-item"><div>'+((m.user&&m.user.nickname)||'成员#'+m.user_id)+' ['+m.role+']</div></div>'
+                }
+            }else{h+='<div class="empty">暂无成员</div>'}
+            c.innerHTML=h;
+            api('GET','/family/groups/'+state.familyGroupId,null,function(e3,g){
+                if(g)document.getElementById('fInviteCode').textContent=g.invite_code||'---'
+            })
+        })
+    })
+}
+
+function switchParent(id,name){
+    state.parentId=id;state.parentName=name;updateBar();refreshTab('dashboard');showTab('dashboard');toast('已切换至：'+name)
+}
+
+function addFamilyParent(){
+    var p={name:document.getElementById('fName').value.trim(),age:parseInt(document.getElementById('fAge').value)||null,gender:document.getElementById('fGender').value};
+    if(!p.name){toast('请填写姓名');return}
+    api('POST','/family/groups/'+state.familyGroupId+'/parents',p,function(e,d){
+        if(e){toast('添加失败');return}toast('添加成功！');loadFamilyInfo();loadDashboard()
+    })
+}
+
+function joinFamily(){
+    var code=document.getElementById('fJoinCode').value.trim();if(!code){toast('请输入邀请码');return}
+    api('POST','/family/groups/'+state.familyGroupId+'/join',{user_id:state.userId,invite_code:code},function(e,d){
+        if(e){toast('加入失败，请检查邀请码');return}toast('成功加入家庭！');loadFamilyInfo()
+    })
+}
+
+function loadAlerts(){
+    api('GET','/logs/parent/'+state.parentId+'?status=pending',null,function(e,logs){
+        var c=document.getElementById('aList');logs=logs||[];var now=new Date();var settings=getAlertConfig();
+        var warns=[];
+        for(var i=0;i<logs.length;i++){
+            var diff=Math.floor((now-new Date(logs[i].scheduled_time))/60000);
+            if(diff>=settings.level1){
+                var lvl='';if(diff>=settings.level3)lvl='emergency';else if(diff>=settings.level2)lvl='urgent';else lvl='warning';
+                warns.push({log:logs[i],diff:diff,level:lvl})
+            }
+        }
+        if(!warns.length){c.innerHTML='<div class="empty">✅ 暂无预警，一切正常！</div>';return}
+        var order={emergency:0,urgent:1,warning:2};warns.sort(function(a,b){return order[a.level]-order[b.level]});
+        var h='';
+        for(var j=0;j<warns.length;j++){
+            var w=warns[j];var lc=w.level==='warning'?'alert-yellow':(w.level==='urgent'?'alert-red':'alert-critical');
+            var lt=w.level==='warning'?'一级预警':(w.level==='urgent'?'二级预警':'🚨 紧急预警');
+            var dt=new Date(w.log.scheduled_time).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+            h+='<div class="alert-card '+lc+'"><strong>'+lt+'</strong><br>漏服 '+w.diff+' 分钟 | 计划时间：'+dt+'<br><button class="small" style="margin-top:8px;background:#fff;color:#333" onclick="confirmLog('+w.log.id+')">立即确认服药</button></div>'
+        }
+        c.innerHTML=h
+    })
+}
+
+function getAlertConfig(){
+    var d=localStorage.getItem('bp_backend_alerts');if(d)return JSON.parse(d);return{level1:10,level2:25,level3:40}
+}
+
+function saveAlertConfig(){
+    var s={level1:parseInt(document.getElementById('aLevel1').value)||10,
+        level2:parseInt(document.getElementById('aLevel2').value)||25,level3:parseInt(document.getElementById('aLevel3').value)||40};
+    localStorage.setItem('bp_backend_alerts',JSON.stringify(s));toast('预警设置已保存！');loadAlerts()
+}
+
+function checkAlerts(){loadAlerts();loadDashboard();toast('预警检测完成')}
+
+function setupCreateUser(){
+    var u={openid:'demo_openid_'+Date.now(),nickname:document.getElementById('sNickname').value||'默认用户',
+        phone:document.getElementById('sPhone').value||'',role:'child'};
+    api('POST','/auth/login',u,function(e,d){
+        if(e||!d){toast('创建用户失败');return}
+        state.userId=d.id;toast('用户创建成功！ID:'+d.id);
+        document.getElementById('setupStep1').style.display='none';document.getElementById('setupStep2').style.display='block'
+    })
+}
+
+function setupCreateFamily(){
+    api('POST','/family/groups',{user_id:state.userId,name:document.getElementById('sFamilyName').value||'我的家庭'},function(e,d){
+        if(e||!d){toast('创建家庭组失败');return}
+        state.familyGroupId=d.id;toast('家庭组创建成功！邀请码：'+d.invite_code);
+        document.getElementById('setupStep2').style.display='none';document.getElementById('setupStep3').style.display='block'
+    })
+}
+
+function setupAddParent(){
+    var p={name:document.getElementById('sParentName').value.trim(),age:parseInt(document.getElementById('sParentAge').value)||null,gender:document.getElementById('sParentGender').value};
+    if(!p.name){toast('请填写姓名');return}
+    api('POST','/family/groups/'+state.familyGroupId+'/parents',p,function(e,d){
+        if(e||!d){toast('添加被看护者失败');return}
+        state.parentId=d.id;state.parentName=d.name;updateBar();
+        document.getElementById('setup').style.display='none';
+        document.getElementById('navTabs').style.display='flex';
+        showTab('dashboard');toast('🎉 系统初始化完成！欢迎使用血压守护')
+    })
+}
+
+function resetAll(){
+    if(confirm('确定要重置所有配置吗？')){state.userId=null;state.familyGroupId=null;state.parentId=null;state.parentName='';
+        document.getElementById('navTabs').style.display='none';document.getElementById('setup').style.display='block';
+        document.getElementById('setupStep1').style.display='block';document.getElementById('setupStep2').style.display='none';document.getElementById('setupStep3').style.display='none';
+        updateBar();toast('已重置')}
+}
+
+function tryRestore(){
+    var d=localStorage.getItem('bp_backend_state');
+    if(d){
+        var s=JSON.parse(d);
+        api('GET','/auth/user/'+s.userId,null,function(e,u){
+            if(!u)return;
+            state.userId=s.userId;state.familyGroupId=s.familyGroupId;state.parentId=s.parentId;state.parentName=s.parentName;
+            updateBar();document.getElementById('setup').style.display='none';
+            document.getElementById('navTabs').style.display='flex';showTab('dashboard')
+        })
+    }
+}
+
+function saveState(){
+    localStorage.setItem('bp_backend_state',JSON.stringify({userId:state.userId,familyGroupId:state.familyGroupId,parentId:state.parentId,parentName:state.parentName}))
+}
+
+var origSetupParent=setupAddParent;setupAddParent=function(){origSetupParent();setTimeout(saveState,500)};
+var origSwitch=switchParent;switchParent=function(id,name){origSwitch(id,name);setTimeout(saveState,500)};
+
+document.getElementById('navTabs').addEventListener('click',function(e){
+    var t=e.target;while(t&&t!==this){if(t.classList.contains('nav-tab')){var ti=t.getAttribute('data-tab');if(ti)showTab(ti);return}t=t.parentElement}
+});
+
+document.getElementById('mStartDate').value=new Date().toISOString().split('T')[0];
+
+function setDefaultTime(){
+    var now=new Date();
+    var pad=function(n){return n<10?'0'+n:n};
+    var v=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes());
+    document.getElementById('lManualTime').value=v;
+}
+setDefaultTime();
+
+window.setupCreateUser=setupCreateUser;
+window.setupCreateFamily=setupCreateFamily;
+window.setupAddParent=setupAddParent;
+window.confirmLog=confirmLog;
+window.deleteMed=deleteMed;
+window.switchParent=switchParent;
+window.addMedication=addMedication;
+window.addBpRecord=addBpRecord;
+window.addFamilyParent=addFamilyParent;
+window.joinFamily=joinFamily;
+window.checkAlerts=checkAlerts;
+window.saveAlertConfig=saveAlertConfig;
+window.resetAll=resetAll;
+window.generateLogs=generateLogs;
+window.addManualLog=addManualLog;
+window.addTestData=addTestData;
+
+updateBar();tryRestore();
+})();
+</script>
+</body>
+</html>

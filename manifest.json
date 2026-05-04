@@ -1,0 +1,175 @@
+{
+  "@platforms": ["android", "iPhone", "iPad"],
+  "id": "com.bloodpressureguardian.app",
+  "name": "血压守护",
+  "version": {
+    "name": "2.0.0",
+    "code": 200
+  },
+  "description": "智能服药提醒与血压记录系统",
+  "launch_path": "index.html",
+  "developer": {
+    "name": "",
+    "email": "",
+    "url": ""
+  },
+  "permissions": {
+    "Accelerometer": {
+      "description": "访问加速度计"
+    },
+    "Audio": {
+      "description": "访问麦克风"
+    },
+    "Messaging": {
+      "description": "短彩邮件插件"
+    },
+    "Cache": {
+      "description": "管理缓存"
+    },
+    "Camera": {
+      "description": "访问摄像头"
+    },
+    "Console": {
+      "description": "跟踪调试输出日志"
+    },
+    "Contacts": {
+      "description": "访问系统联系人信息"
+    },
+    "Device": {
+      "description": "访问设备信息"
+    },
+    "Downloader": {
+      "description": "文件下载管理"
+    },
+    "Events": {
+      "description": "应用扩展事件"
+    },
+    "File": {
+      "description": "访问本地文件系统"
+    },
+    "Gallery": {
+      "description": "访问系统相册"
+    },
+    "Geolocation": {
+      "description": "访问位置信息"
+    },
+    "Invocation": {
+      "description": "使用Native.js能力"
+    },
+    "Orientation": {
+      "description": "访问方向传感器"
+    },
+    "Proximity": {
+      "description": "访问距离传感器"
+    },
+    "Storage": {
+      "description": "管理本地存储"
+    },
+    "Uploader": {
+      "description": "文件上传管理"
+    },
+    "Runtime": {
+      "description": "访问运行期信息"
+    },
+    "NativeObj": {
+      "description": "原生对象"
+    },
+    "Navigator": {
+      "description": "浏览器信息"
+    },
+    "Messaging": {
+      "description": "短彩邮件插件"
+    }
+  },
+  "plus": {
+    "splashscreen": {
+      "autoclose": true,
+      "waiting": true,
+      "delay": 0
+    },
+    "popGesture": "close",
+    "launchwebview": {
+      "kernel": "WKWebview"
+    },
+    "statusbar": {
+      "immersed": "supportedDevice",
+      "style": "light",
+      "background": "#667eea"
+    },
+    "distribute": {
+      "google": {
+        "packagename": "com.bloodpressureguardian.app",
+        "keystore": "",
+        "password": "",
+        "aliasname": "",
+        "permissions": [
+          "<uses-permission android:name=\"android.permission.INTERNET\"/>",
+          "<uses-permission android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\"/>",
+          "<uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>",
+          "<uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\"/>",
+          "<uses-permission android:name=\"android.permission.ACCESS_WIFI_STATE\"/>",
+          "<uses-permission android:name=\"android.permission.VIBRATE\"/>",
+          "<uses-permission android:name=\"android.permission.WAKE_LOCK\"/>"
+        ],
+        "abiFilters": ["armeabi-v7a", "arm64-v8a", "x86"]
+      },
+      "apple": {
+        "devices": "iphone",
+        "idfa": false
+      },
+      "orientation": ["portrait-primary"],
+      "debug": false,
+      "icons": {
+        "ios": {
+          "appstore": "unpackage/res/icons/1024x1024.png",
+          "ipad": {
+            "app": "unpackage/res/icons/76x76.png",
+            "app@2x": "unpackage/res/icons/152x152.png",
+            "notification": "unpackage/res/icons/20x20.png",
+            "notification@2x": "unpackage/res/icons/40x40.png",
+            "proapp@2x": "unpackage/res/icons/167x167.png",
+            "settings": "unpackage/res/icons/29x29.png",
+            "settings@2x": "unpackage/res/icons/58x58.png",
+            "spotlight": "unpackage/res/icons/40x40.png",
+            "spotlight@2x": "unpackage/res/icons/80x80.png"
+          },
+          "iphone": {
+            "app@2x": "unpackage/res/icons/120x120.png",
+            "app@3x": "unpackage/res/icons/180x180.png",
+            "notification@2x": "unpackage/res/icons/40x40.png",
+            "notification@3x": "unpackage/res/icons/60x60.png",
+            "settings@2x": "unpackage/res/icons/58x58.png",
+            "settings@3x": "unpackage/res/icons/87x87.png",
+            "spotlight@2x": "unpackage/res/icons/80x80.png",
+            "spotlight@3x": "unpackage/res/icons/120x120.png"
+          }
+        },
+        "android": {
+          "hdpi": "unpackage/res/icons/72x72.png",
+          "ldpi": "unpackage/res/icons/48x48.png",
+          "mdpi": "unpackage/res/icons/48x48.png",
+          "xhdpi": "unpackage/res/icons/96x96.png",
+          "xxhdpi": "unpackage/res/icons/144x144.png",
+          "xxxhdpi": "unpackage/res/icons/192x192.png"
+        }
+      },
+      "splashscreen": {
+        "ios": {
+          "iphone": {
+            "default": "",
+            "retina47": "",
+            "retina55": "",
+            "retina40": ""
+          }
+        },
+        "android": {
+          "hdpi": "",
+          "ldpi": "",
+          "mdpi": "",
+          "xhdpi": "",
+          "xxhdpi": ""
+        }
+      }
+    }
+  }
+}

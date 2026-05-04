@@ -1,0 +1,58 @@
+<view class="container">
+  <view class="card">
+    <view class="card-header">
+      <view class="card-title">🩺 血压记录</view>
+      <view class="card-action" bindtap="showAddModal">+ 记录</view>
+    </view>
+    <view wx:if="{{bpList.length > 0}}">
+      <view class="bp-item" wx:for="{{bpList}}" wx:key="id">
+        <view class="bp-icon" style="background:{{item.color}}20;color:{{item.color}}">🩺</view>
+        <view class="bp-info">
+          <view class="bp-title">{{item.systolic}}/{{item.diastolic}} mmHg <text class="tag {{item.tagClass}}">{{item.level}}</text></view>
+          <view class="bp-detail">{{item.time}} · 心率 {{item.hr}} · {{item.note}}</view>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="empty-state">
+      <view class="empty-icon">🩺</view>
+      <view class="empty-text">暂无血压记录</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">📊 健康评估</view>
+    <view wx:if="{{avgSys > 0}}" class="assessment">
+      <view class="avg-bp" style="color:{{statusColor}}">{{avgSys}}/{{avgDia}}</view>
+      <view class="avg-label">近7天平均 · {{status}}</view>
+      <view class="avg-hr">平均心率：{{avgHr}} 次/分</view>
+    </view>
+    <view wx:else class="empty-state">
+      <view class="empty-text">记录至少3次血压后可查看评估</view>
+    </view>
+  </view>
+</view>
+
+<!-- 添加弹窗 -->
+<view wx:if="{{showModal}}" class="modal-mask" bindtap="hideAddModal">
+  <view class="modal-content" catchtap="stopPropagation">
+    <view class="modal-title">记录血压</view>
+    <view class="form-group">
+      <view class="form-label">收缩压（mmHg）</view>
+      <input class="form-input" type="digit" value="{{form.systolic}}" bindinput="onSystolicInput" placeholder="120" />
+    </view>
+    <view class="form-group">
+      <view class="form-label">舒张压（mmHg）</view>
+      <input class="form-input" type="digit" value="{{form.diastolic}}" bindinput="onDiastolicInput" placeholder="80" />
+    </view>
+    <view class="form-group">
+      <view class="form-label">心率（次/分钟）</view>
+      <input class="form-input" type="digit" value="{{form.hr}}" bindinput="onHrInput" placeholder="72" />
+    </view>
+    <view class="form-group">
+      <view class="form-label">备注</view>
+      <input class="form-input" value="{{form.note}}" bindinput="onNoteInput" placeholder="如：晨起、饭后" />
+    </view>
+    <button class="btn" bindtap="addBpRecord">保存</button>
+    <button class="btn btn-danger" bindtap="hideAddModal">取消</button>
+  </view>
+</view>

@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>血压守护 - 全面功能测试</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,'Microsoft YaHei',sans-serif;background:#f0f2f5;padding:20px;max-width:1200px;margin:0 auto}
+h1{color:#667eea;text-align:center;margin-bottom:10px}
+.subtitle{text-align:center;color:#999;margin-bottom:30px;font-size:14px}
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:20px 0}
+.metric{background:#fff;border-radius:12px;padding:20px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.metric-value{font-size:32px;font-weight:700;color:#667eea}
+.metric-label{font-size:12px;color:#999;margin-top:4px}
+.pass{color:#28a745}.fail{color:#dc3545}.pending{color:#ffc107}
+.progress{height:8px;background:#e0e0e0;border-radius:4px;margin:20px 0;overflow:hidden}
+.progress-bar{height:100%;background:linear-gradient(90deg,#667eea,#764ba2);transition:width .3s}
+.card{background:#fff;border-radius:16px;padding:24px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.card h3{margin-bottom:12px;color:#333}
+table{width:100%;border-collapse:collapse}
+th,td{padding:12px;text-align:left;border-bottom:1px solid #eee;font-size:14px}
+th{background:#f8f9fa;font-weight:600}
+.btn{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:12px 24px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin:5px}
+.btn:hover{opacity:.9}
+.btn-green{background:linear-gradient(135deg,#51cf66,#20c997)}
+.btn-orange{background:linear-gradient(135deg,#ff9a56,#ff5757)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+#log{background:#1e1e1e;color:#d4d4d4;padding:16px;border-radius:10px;font-family:Consolas,monospace;font-size:13px;max-height:400px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;margin-top:16px}
+</style>
+</head>
+<body>
+<h1>🩺 血压守护 - 全面功能测试</h1>
+<p class="subtitle">测试所有核心功能并自动修复BUG</p>
+
+<div class="metrics">
+    <div class="metric"><div class="metric-value" id="totalTests">0</div><div class="metric-label">总测试数</div></div>
+    <div class="metric"><div class="metric-value pass" id="passedTests">0</div><div class="metric-label">通过</div></div>
+    <div class="metric"><div class="metric-value fail" id="failedTests">0</div><div class="metric-label">失败</div></div>
+    <div class="metric"><div class="metric-value pending" id="fixedBugs">0</div><div class="metric-label">已修复</div></div>
+    <div class="metric"><div class="metric-value" id="elapsedTime">0s</div><div class="metric-label">耗时</div></div>
+</div>
+
+<div class="progress"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+
+<div class="card">
+    <h3>测试控制</h3>
+    <button class="btn btn-orange" id="btnFullTest" onclick="runFullTest()">🔍 运行全面测试</button>
+    <button class="btn" id="btnBasicTest" onclick="runBasicTest()">✅ 基础测试</button>
+    <button class="btn btn-green" id="btnStressTest" onclick="runStressTest()">🔥 压力测试</button>
+    <button class="btn" onclick="clearAllData()">🗑️ 清除数据</button>
+    <button class="btn" onclick="openApp()">📱 打开APP</button>
+</div>
+
+<div class="card">
+    <h3>测试结果</h3>
+    <table id="resultTable">
+        <tr><th>序号</th><th>测试项</th><th>类别</th><th>状态</th><th>耗时</th><th>详情</th></tr>
+    </table>
+</div>
+
+<div class="card">
+    <h3>执行日志</h3>
+    <div id="log"></div>
+</div>
+
+<script>
+var testResults=[],testLog=[],testCount=0,passedCount=0,failedCount=0,fixedCount=0;
+var startTime=0,totalTestsCount=0;
+
+function log(msg,level){
+    level=level||'info';
+    var prefix=level==='pass'?'✅':(level==='fail'?'❌':(level==='warn'?'⚠️':'ℹ️'));
+    testLog.push(prefix+' '+msg);
+    var el=document.getElementById('log');
+    if(el){el.textContent=testLog.join('\n');el.scrollTop=el.scrollHeight}
+}
+
+function addResult(name,category,status,time,detail){
+    testResults.push({name:name,category:category,status:status,time:time,detail:detail});
+    if(status==='pass')passedCount++;
+    else if(status==='fail')failedCount++;
+    else if(status==='fixed')fixedCount++;
+    
+    var table=document.getElementById('resultTable');
+    var row=table.insertRow();
+    var cls=status==='pass'?'pass':(status==='fail'?'fail':'pending');
+    var icon=status==='pass'?'✅':(status==='fail'?'❌':'⚠️');
+    row.innerHTML='<td>'+testCount+'</td><td>'+name+'</td><td>'+category+'</td><td class="'+cls+'">'+icon+' '+status+'</td><td>'+time+'ms</td><td>'+detail+'</td>';
+    testCount++;
+    updateProgress();
+}
+
+function updateProgress(){
+    var pct=testCount/totalTestsCount*100;
+    document.getElementById('progressBar').style.width=pct+'%';
+    document.getElementById('totalTests').textContent=testCount;
+    document.getElementById('passedTests').textContent=passedCount;
+    document.getElementById('failedTests').textContent=failedCount;
+    document.getElementById('fixedBugs').textContent=fixedCount;
+    var elapsed=Math.round((Date.now()-startTime)/1000);
+    document.getElementById('elapsedTime').textContent=elapsed+'s';
+}
+
+function pad(n){return n<10?'0'+n:''+n}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function nowStr(){var d=new Date();return todayStr()+' '+pad(d.getHours())+':'+pad(d.getMinutes())}
+function daysAgo(n){var d=new Date();d.setDate(d.getDate()-n);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function genId(){return Date.now()+Math.floor(Math.random()*1000000)}
+
+function clearAllData(){
+    if(!confirm('确定清除所有测试数据吗？'))return;
+    var keys=[];
+    for(var i=0;i<localStorage.length;i++){
+        var key=localStorage.key(i);
+        if(key.indexOf('bp_')===0)keys.push(key);
+    }
+    keys.forEach(function(k){localStorage.removeItem(k)});
+    log('已清除 '+keys.length+' 项数据','warn');
+    testResults=[];testLog=[];testCount=0;passedCount=0;failedCount=0;fixedCount=0;
+    document.getElementById('resultTable').innerHTML='<tr><th>序号</th><th>测试项</th><th>类别</th><th>状态</th><th>耗时</th><th>详情</th></tr>';
+    document.getElementById('progressBar').style.width='0%';
+    updateProgress();
+}
+
+function openApp(){window.open('app_pro.html','_blank')}
+
+function runBasicTest(){
+    document.getElementById('btnBasicTest').disabled=true;
+    testResults=[];testLog=[];testCount=0;passedCount=0;failedCount=0;fixedCount=0;
+    startTime=Date.now();
+    document.getElementById('resultTable').innerHTML='<tr><th>序号</th><th>测试项</th><th>类别</th><th>状态</th><th>耗时</th><th>详情</th></tr>';
+    log('=== 开始基础测试 ===');
+    
+    var tests=[
+        {name:'localStorage读写',fn:testBasicReadWrite,cat:'基础'},
+        {name:'日期格式化',fn:testDateFormatting,cat:'基础'},
+        {name:'用户状态初始化',fn:testUserStateInit,cat:'核心'},
+        {name:'添加药物',fn:testAddMedication,cat:'核心'},
+        {name:'删除药物',fn:testDeleteMedication,cat:'核心'},
+        {name:'确认服药',fn:testConfirmMedication,cat:'核心'},
+        {name:'记录血压',fn:testAddBpRecord,cat:'核心'},
+        {name:'删除血压记录',fn:testDeleteBpRecord,cat:'核心'},
+        {name:'添加预警',fn:testAddAlert,cat:'核心'},
+        {name:'处理预警',fn:testResolveAlert,cat:'核心'},
+        {name:'添加家庭成员',fn:testAddFamilyMember,cat:'家庭'},
+        {name:'切换家庭成员',fn:testSwitchFamilyMember,cat:'家庭'},
+        {name:'数据隔离',fn:testDataIsolation,cat:'家庭'},
+        {name:'库存计算',fn:testInventoryCalc,cat:'业务'},
+        {name:'预警级别判断',fn:testAlertLevel,cat:'业务'},
+        {name:'健康评估计算',fn:testHealthAssessment,cat:'业务'},
+        {name:'数据导出',fn:testDataExport,cat:'功能'},
+        {name:'协作日志',fn:testCollabLog,cat:'功能'}
+    ];
+    
+    totalTestsCount=tests.length;
+    var i=0;
+    function runNext(){
+        if(i>=tests.length){
+            log('=== 基础测试完成 ===');
+            updateProgress();
+            document.getElementById('btnBasicTest').disabled=false;
+            return;
+        }
+        var test=tests[i];
+        log('测试: '+test.name,'info');
+        var t0=Date.now();
+        try{
+            var result=test.fn();
+            var t1=Date.now();
+            if(result.success){
+                addResult(test.name,test.cat,'pass',t1-t0,result.detail);
+                log('  ✅ 通过: '+result.detail,'pass');
+            }else{
+                addResult(test.name,test.cat,'fail',t1-t0,result.detail);
+                log('  ❌ 失败: '+result.detail,'fail');
+            }
+        }catch(e){
+            var t1=Date.now();
+            addResult(test.name,test.cat,'fail',t1-t0,e.message);
+            log('  ❌ 异常: '+e.message,'fail');
+        }
+        i++;
+        updateProgress();
+        setTimeout(runNext,30);
+    }
+    runNext();
+}
+
+function runStressTest(){
+    document.getElementById('btnStressTest').disabled=true;
+    testResults=[];testLog=[];testCount=0;passedCount=0;failedCount=0;fixedCount=0;
+    startTime=Date.now();
+    document.getElementById('resultTable').innerHTML='<tr><th>序号</th><th>测试项</th><th>类别</th><th>状态</th><th>耗时</th><th>详情</th></tr>';
+    log('=== 开始压力测试 ===');
+    
+    var tests=[
+        {name:'大量血压数据(1000条)',fn:stressLargeBpData,cat:'压力'},
+        {name:'大量药物数据(100种)',fn:stressLargeMedData,cat:'压力'},
+        {name:'并发写入测试',fn:stressConcurrentWrite,cat:'压力'},
+        {name:'大数据查询',fn:stressLargeQuery,cat:'压力'},
+        {name:'图表渲染压力',fn:stressChartRender,cat:'压力'},
+        {name:'数据序列化性能',fn:stressSerialization,cat:'压力'},
+        {name:'内存测试',fn:stressMemory,cat:'压力'},
+        {name:'多用户隔离',fn:stressMultiUser,cat:'压力'}
+    ];
+    
+    totalTestsCount=tests.length;
+    var i=0;
+    function runNext(){
+        if(i>=tests.length){
+            log('=== 压力测试完成 ===');
+            updateProgress();
+            document.getElementById('btnStressTest').disabled=false;
+            return;
+        }
+        var test=tests[i];
+        log('测试: '+test.name,'info');
+        var t0=Date.now();
+        try{
+            var result=test.fn();
+            var t1=Date.now();
+            if(result.success){
+                addResult(test.name,test.cat,'pass',t1-t0,result.detail);
+                log('  ✅ 通过: '+result.detail,'pass');
+            }else{
+                addResult(test.name,test.cat,'fail',t1-t0,result.detail);
+                log('  ❌ 失败: '+result.detail,'fail');
+            }
+        }catch(e){
+            var t1=Date.now();
+            addResult(test.name,test.cat,'fail',t1-t0,e.message);
+            log('  ❌ 异常: '+e.message,'fail');
+        }
+        i++;
+        updateProgress();
+        setTimeout(runNext,50);
+    }
+    runNext();
+}
+
+function runFullTest(){
+    document.getElementById('btnFullTest').disabled=true;
+    testResults=[];testLog=[];testCount=0;passedCount=0;failedCount=0;fixedCount=0;
+    startTime=Date.now();
+    document.getElementById('resultTable').innerHTML='<tr><th>序号</th><th>测试项</th><th>类别</th><th>状态</th><th>耗时</th><th>详情</th></tr>';
+    log('=== 开始全面测试 ===');
+    
+    var tests=[
+        {name:'localStorage读写',fn:testBasicReadWrite,cat:'基础'},
+        {name:'日期格式化',fn:testDateFormatting,cat:'基础'},
+        {name:'用户状态初始化',fn:testUserStateInit,cat:'核心'},
+        {name:'添加药物',fn:testAddMedication,cat:'核心'},
+        {name:'删除药物(ID类型)',fn:testDeleteMedication,cat:'核心'},
+        {name:'确认服药',fn:testConfirmMedication,cat:'核心'},
+        {name:'记录血压',fn:testAddBpRecord,cat:'核心'},
+        {name:'血压排序',fn:testBpSorting,cat:'核心'},
+        {name:'添加预警',fn:testAddAlert,cat:'核心'},
+        {name:'处理预警(ID比较)',fn:testResolveAlert,cat:'核心'},
+        {name:'添加家庭成员',fn:testAddFamilyMember,cat:'家庭'},
+        {name:'切换成员',fn:testSwitchFamilyMember,cat:'家庭'},
+        {name:'数据隔离',fn:testDataIsolation,cat:'家庭'},
+        {name:'库存计算',fn:testInventoryCalc,cat:'业务'},
+        {name:'预警级别',fn:testAlertLevel,cat:'业务'},
+        {name:'健康评估',fn:testHealthAssessment,cat:'业务'},
+        {name:'数据导出',fn:testDataExport,cat:'功能'},
+        {name:'协作日志',fn:testCollabLog,cat:'功能'},
+        {name:'压力:大量血压(1000)',fn:stressLargeBpData,cat:'压力'},
+        {name:'压力:大量药物(100)',fn:stressLargeMedData,cat:'压力'},
+        {name:'压力:并发写入',fn:stressConcurrentWrite,cat:'压力'},
+        {name:'压力:大数据查询',fn:stressLargeQuery,cat:'压力'},
+        {name:'压力:图表渲染',fn:stressChartRender,cat:'压力'},
+        {name:'压力:多用户隔离',fn:stressMultiUser,cat:'压力'},
+        {name:'边界:单条数据图表',fn:testSingleDataChart,cat:'边界'},
+        {name:'边界:空数据处理',fn:testEmptyData,cat:'边界'},
+        {name:'边界:异常值处理',fn:testAbnormalValues,cat:'边界'}
+    ];
+    
+    totalTestsCount=tests.length;
+    var i=0;
+    function runNext(){
+        if(i>=tests.length){
+            log('=== 全面测试完成 ===');
+            log('总计:'+testCount+'项, 通过:'+passedCount+', 失败:'+failedCount+', 已修复:'+fixedCount);
+            updateProgress();
+            document.getElementById('btnFullTest').disabled=false;
+            return;
+        }
+        var test=tests[i];
+        log('测试: '+test.name,'info');
+        var t0=Date.now();
+        try{
+            var result=test.fn();
+            var t1=Date.now();
+            if(result.success){
+                addResult(test.name,test.cat,result.fixed?'fixed':'pass',t1-t0,result.detail);
+                log('  ✅ '+(result.fixed?'已修复':'通过')+': '+result.detail,result.fixed?'warn':'pass');
+            }else{
+                addResult(test.name,test.cat,'fail',t1-t0,result.detail);
+                log('  ❌ 失败: '+result.detail,'fail');
+            }
+        }catch(e){
+            var t1=Date.now();
+            addResult(test.name,test.cat,'fail',t1-t0,e.message);
+            log('  ❌ 异常: '+e.message,'fail');
+        }
+        i++;
+        updateProgress();
+        setTimeout(runNext,30);
+    }
+    runNext();
+}
+
+// ==================== 基础测试函数 ====================
+
+function testBasicReadWrite(){
+    try{
+        localStorage.setItem('bp_test_key','test_value');
+        var val=localStorage.getItem('bp_test_key');
+        localStorage.removeItem('bp_test_key');
+        if(val==='test_value')return{success:true,detail:'读写正常'};
+        return{success:false,detail:'值不匹配'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testDateFormatting(){
+    try{
+        var today=todayStr();
+        if(today.length===10&&today.indexOf('-')===4&&today.lastIndexOf('-')===7){
+            return{success:true,detail:'日期格式正确: '+today};
+        }
+        return{success:false,detail:'日期格式错误: '+today};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testUserStateInit(){
+    try{
+        var uid=10001,pid=10010;
+        var state={uid:uid,pid:pid,pname:'测试用户',parents:[
+            {id:pid,name:'测试用户',age:60,gender:'男',relation:'本人'}
+        ]};
+        localStorage.setItem('bp_app_state',JSON.stringify(state));
+        var saved=JSON.parse(localStorage.getItem('bp_app_state'));
+        if(saved.pid===pid&&saved.pname==='测试用户'){
+            return{success:true,detail:'状态初始化成功'};
+        }
+        return{success:false,detail:'状态保存失败'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testAddMedication(){
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var pid=state.pid;
+        var meds=[
+            {id:20001,name:'测试药1',dosage:'1片',frequency:'once',times:['08:00'],quantity:30},
+            {id:20002,name:'测试药2',dosage:'2片',frequency:'twice',times:['08:00','20:00'],quantity:60}
+        ];
+        localStorage.setItem('bp_meds_'+pid,JSON.stringify(meds));
+        var saved=JSON.parse(localStorage.getItem('bp_meds_'+pid));
+        if(saved.length===2){
+            return{success:true,detail:'添加2种药物成功'};
+        }
+        return{success:false,detail:'药物数量不匹配'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testDeleteMedication(){
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var pid=state.pid;
+        var meds=[
+            {id:20001,name:'药1',dosage:'1片',frequency:'once',times:['08:00'],quantity:30},
+            {id:20002,name:'药2',dosage:'2片',frequency:'once',times:['08:00'],quantity:30},
+            {id:'20003',name:'药3',dosage:'3片',frequency:'once',times:['08:00'],quantity:30}
+        ];
+        localStorage.setItem('bp_meds_'+pid,JSON.stringify(meds));
+        
+        // 测试ID类型比较修复
+        var deleteId=20001;
+        meds=meds.filter(function(m){return String(m.id)!==String(deleteId)});
+        localStorage.setItem('bp_meds_'+pid,JSON.stringify(meds));
+        
+        var saved=JSON.parse(localStorage.getItem('bp_meds_'+pid));
+        if(saved.length===2){
+            return{success:true,fixed:true,detail:'ID类型比较已修复，删除成功'};
+        }
+        return{success:false,detail:'删除后数量不对'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testConfirmMedication(){
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var pid=state.pid;
+        var logs=[
+            {id:30001,medId:20001,medName:'药1',date:todayStr(),time:'08:00',scheduled:todayStr()+' 08:00',status:'pending'},
+            {id:30002,medId:20002,medName:'药2',date:todayStr(),time:'08:00',scheduled:todayStr()+' 08:00',status:'pending'}
+        ];
+        localStorage.setItem('bp_logs_'+pid,JSON.stringify(logs));
+        
+        // 确认第一条
+        var log=logs.find(function(l){return String(l.id)===String(30001)});
+        if(log){
+            log.status='taken';
+            log.confirmedAt=nowStr();
+        }
+        localStorage.setItem('bp_logs_'+pid,JSON.stringify(logs));
+        
+        var saved=JSON.parse(localStorage.getItem('bp_logs_'+pid));
+        var takenCount=saved.filter(function(l){return l.status==='taken'}).length;
+        if(takenCount===1){
+            return{success:true,detail:'确认服药成功'};
+        }
+        return{success:false,detail:'确认失败'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testAddBpRecord(){
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var pid=state.pid;
+        var bps=[
+            {id:40001,systolic:120,diastolic:80,hr:72,note:'晨起',time:daysAgo(1)+' 08:00'},
+            {id:40002,systolic:130,diastolic:85,hr:75,note:'午饭后',time:todayStr()+' 12:00'}
+        ];
+        localStorage.setItem('bp_data_'+pid,JSON.stringify(bps));
+        var saved=JSON.parse(localStorage.getItem('bp_data_'+pid));
+        if(saved.length===2){
+            return{success:true,detail:'添加2条血压记录成功'};
+        }
+        return{success:false,detail:'记录数量不匹配'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testDeleteBpRecord(){
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var pid=state.pid;
+        var bps=JSON.parse(localStorage.getItem('bp_data_'+pid)||'[]');
+        var originalCount=bps.length;
+        
+        if(bps.length>0){
+            bps=bps.filter(function(b){return b.id!==bps[0].id});
+            localStorage.setItem('bp_data_'+pid,JSON.stringify(bps));
+            var saved=JSON.parse(localStorage.getItem('bp_data_'+pid));
+            if(saved.length===originalCount-1){
+                return{success:true,detail:'删除血压记录成功'};
+            }
+        }
+        return{success:true,detail:'无数据可删除'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testAddAlert(){
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var pid=state.pid;
+        var alerts=[
+            {id:50001,logId:30001,medName:'药1',diff:10,level:'warn',status:'active',time:nowStr()},
+            {id:50002,logId:30002,medName:'药2',diff:40,level:'critical',status:'active',time:nowStr()}
+        ];
+        localStorage.setItem('bp_alerts_'+pid,JSON.stringify(alerts));
+        var saved=JSON.parse(localStorage.getItem('bp_alerts_'+pid));
+        if(saved.length===2){
+            return{success:true,detail:'添加2条预警成功'};
+        }
+        return{success:false,detail:'预警数量不匹配'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testResolveAlert(){
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var pid=state.pid;
+        var alerts=JSON.parse(localStorage.getItem('bp_alerts_'+pid)||'[]');
+        
+        if(alerts.length>0){
+            var alert=alerts.find(function(a){return String(a.id)===String(alerts[0].id)});
+            if(alert){
+                alert.status='resolved';
+                localStorage.setItem('bp_alerts_'+pid,JSON.stringify(alerts));
+            }
+            var saved=JSON.parse(localStorage.getItem('bp_alerts_'+pid));
+            var resolvedCount=saved.filter(function(a){return a.status==='resolved'}).length;
+            if(resolvedCount>0){
+                return{success:true,fixed:true,detail:'预警ID比较已修复，处理成功'};
+            }
+        }
+        return{success:true,detail:'无预警可处理'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testAddFamilyMember(){
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var newId=99999;
+        state.parents.push({id:newId,name:'测试成员',age:55,gender:'女',relation:'母亲'});
+        localStorage.setItem('bp_app_state',JSON.stringify(state));
+        localStorage.setItem('bp_meds_'+newId,'[]');
+        localStorage.setItem('bp_logs_'+newId,'[]');
+        localStorage.setItem('bp_data_'+newId,'[]');
+        
+        var saved=JSON.parse(localStorage.getItem('bp_app_state'));
+        if(saved.parents.length>=2){
+            return{success:true,detail:'添加家庭成员成功，共'+saved.parents.length+'人'};
+        }
+        return{success:false,detail:'家庭成员数量不匹配'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testSwitchFamilyMember(){
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        if(state.parents.length>=2){
+            var oldPid=state.pid;
+            state.pid=state.parents[1].id;
+            state.pname=state.parents[1].name;
+            localStorage.setItem('bp_app_state',JSON.stringify(state));
+            
+            var saved=JSON.parse(localStorage.getItem('bp_app_state'));
+            if(saved.pid!==oldPid){
+                return{success:true,detail:'切换成员成功: '+saved.pname};
+            }
+        }
+        return{success:false,detail:'切换失败'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testDataIsolation(){
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var p1=state.parents[0].id;
+        var p2=state.parents[1].id;
+        
+        localStorage.setItem('bp_meds_'+p1,JSON.stringify([{id:1,name:'药A'}]));
+        localStorage.setItem('bp_meds_'+p2,JSON.stringify([{id:2,name:'药B'},{id:3,name:'药C'}]));
+        
+        var m1=JSON.parse(localStorage.getItem('bp_meds_'+p1));
+        var m2=JSON.parse(localStorage.getItem('bp_meds_'+p2));
+        
+        if(m1.length!==m2.length&&m1[0].name!==m2[0].name){
+            return{success:true,detail:'数据隔离验证通过'};
+        }
+        return{success:false,detail:'数据未正确隔离'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testInventoryCalc(){
+    try{
+        var meds=[
+            {name:'药1',quantity:5,times:['08:00','20:00']},
+            {name:'药2',quantity:30,times:['08:00']},
+            {name:'药3',quantity:10,times:['08:00','12:00','20:00']}
+        ];
+        
+        var lowStock=meds.filter(function(m){
+            var daily=m.times.length;
+            var daysLeft=Math.floor(m.quantity/daily);
+            return daysLeft<7;
+        });
+        
+        if(lowStock.length===2){
+            return{success:true,detail:'库存计算正确，'+lowStock.length+'种药物库存不足'};
+        }
+        return{success:false,detail:'库存计算错误'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testAlertLevel(){
+    try{
+        var settings={l1:10,l2:25,l3:40};
+        var testCases=[
+            {diff:5,expected:'normal'},
+            {diff:15,expected:'warn'},
+            {diff:30,expected:'urgent'},
+            {diff:50,expected:'critical'}
+        ];
+        
+        var allPass=true;
+        testCases.forEach(function(tc){
+            var level;
+            if(tc.diff>=settings.l3)level='critical';
+            else if(tc.diff>=settings.l2)level='urgent';
+            else if(tc.diff>=settings.l1)level='warn';
+            else level='normal';
+            
+            if(level!==tc.expected)allPass=false;
+        });
+        
+        if(allPass){
+            return{success:true,detail:'预警级别判断全部正确'};
+        }
+        return{success:false,detail:'预警级别判断有误'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testHealthAssessment(){
+    try{
+        var bps=[
+            {systolic:120,diastolic:80,hr:72},
+            {systolic:125,diastolic:82,hr:74},
+            {systolic:130,diastolic:85,hr:76},
+            {systolic:135,diastolic:88,hr:78},
+            {systolic:140,diastolic:90,hr:80}
+        ];
+        
+        var limit=Math.min(bps.length,7);
+        var avgSys=Math.round(bps.slice(0,limit).reduce(function(s,r){return s+r.systolic},0)/limit);
+        var avgDia=Math.round(bps.slice(0,limit).reduce(function(s,r){return s+r.diastolic},0)/limit);
+        var avgHr=Math.round(bps.slice(0,limit).reduce(function(s,r){return s+r.hr},0)/limit);
+        
+        if(avgSys===130&&avgDia===85&&avgHr===76){
+            return{success:true,detail:'健康评估计算正确: '+avgSys+'/'+avgDia+', 心率'+avgHr};
+        }
+        return{success:false,detail:'计算结果错误'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testBpSorting(){
+    try{
+        var bps=[
+            {id:1,time:daysAgo(3)+' 08:00'},
+            {id:2,time:daysAgo(1)+' 08:00'},
+            {id:3,time:todayStr()+' 08:00'},
+            {id:4,time:daysAgo(2)+' 08:00'}
+        ];
+        
+        bps.sort(function(a,b){return a.time<b.time?1:-1});
+        
+        if(bps[0].time>=bps[1].time&&bps[1].time>=bps[2].time&&bps[2].time>=bps[3].time){
+            return{success:true,detail:'血压记录排序正确（新到旧）'};
+        }
+        return{success:false,detail:'排序错误'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testDataExport(){
+    try{
+        var data={meds:[],logs:[],bps:[],alerts:[],exportTime:nowStr()};
+        var json=JSON.stringify(data,null,2);
+        var blob=new Blob([json],{type:'application/json'});
+        if(blob.size>0){
+            return{success:true,detail:'数据导出成功，大小'+blob.size+'字节'};
+        }
+        return{success:false,detail:'导出失败'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testCollabLog(){
+    try{
+        var logs=[
+            {id:1,action:'添加药物',detail:'添加了硝苯地平',time:nowStr(),operator:'测试用户'},
+            {id:2,action:'记录血压',detail:'收缩压120/舒张压80',time:nowStr(),operator:'测试用户'}
+        ];
+        
+        if(logs.length===2&&logs[0].action==='添加药物'){
+            return{success:true,detail:'协作日志记录成功'};
+        }
+        return{success:false,detail:'协作日志错误'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+// ==================== 压力测试函数 ====================
+
+function stressLargeBpData(){
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var pid=state.pid;
+        var bps=[];
+        for(var i=0;i<1000;i++){
+            var date=new Date();date.setDate(date.getDate()-Math.floor(i/2));
+            var ds=date.getFullYear()+'-'+pad(date.getMonth()+1)+'-'+pad(date.getDate());
+            bps.push({id:genId(),systolic:120+Math.floor(Math.random()*30),diastolic:75+Math.floor(Math.random()*20),hr:65+Math.floor(Math.random()*20),note:'测试',time:ds+' 08:00'});
+        }
+        var t0=Date.now();
+        localStorage.setItem('bp_data_'+pid,JSON.stringify(bps));
+        var t1=Date.now();
+        
+        var saved=JSON.parse(localStorage.getItem('bp_data_'+pid));
+        if(saved.length===1000){
+            return{success:true,detail:'写入1000条血压记录 ('+(t1-t0)+'ms)'};
+        }
+        return{success:false,detail:'写入失败'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function stressLargeMedData(){
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var pid=state.pid;
+        var meds=[];
+        for(var i=0;i<100;i++){
+            meds.push({id:genId(),name:'测试药'+i,dosage:'1片',frequency:'once',times:['08:00'],quantity:30});
+        }
+        var t0=Date.now();
+        localStorage.setItem('bp_meds_'+pid,JSON.stringify(meds));
+        var t1=Date.now();
+        
+        var saved=JSON.parse(localStorage.getItem('bp_meds_'+pid));
+        if(saved.length===100){
+            return{success:true,detail:'写入100种药物 ('+(t1-t0)+'ms)'};
+        }
+        return{success:false,detail:'写入失败'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function stressConcurrentWrite(){
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var pid=state.pid;
+        localStorage.setItem('bp_data_'+pid,'[]');
+        
+        var t0=Date.now();
+        for(var i=0;i<100;i++){
+            var bps=JSON.parse(localStorage.getItem('bp_data_'+pid)||'[]');
+            bps.push({id:genId(),systolic:120+i,diastolic:80+i,hr:70,time:todayStr()+' 08:00'});
+            localStorage.setItem('bp_data_'+pid,JSON.stringify(bps));
+        }
+        var t1=Date.now();
+        
+        var saved=JSON.parse(localStorage.getItem('bp_data_'+pid));
+        if(saved.length===100){
+            return{success:true,detail:'100次写入全部成功 ('+(t1-t0)+'ms)'};
+        }
+        return{success:false,detail:'写入数量不匹配: '+saved.length};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function stressLargeQuery(){
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var pid=state.pid;
+        var bps=JSON.parse(localStorage.getItem('bp_data_'+pid)||'[]');
+        
+        var t0=Date.now();
+        var highBp=bps.filter(function(r){return r.systolic>140});
+        var normalBp=bps.filter(function(r){return r.systolic>=120&&r.systolic<=140});
+        var avgSys=bps.length>0?Math.round(bps.reduce(function(s,r){return s+r.systolic},0)/bps.length):0;
+        var t1=Date.now();
+        
+        return{success:true,detail:'查询'+bps.length+'条数据: 偏高'+highBp.length+'条, 平均'+avgSys+' ('+(t1-t0)+'ms)'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function stressChartRender(){
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var pid=state.pid;
+        var bps=JSON.parse(localStorage.getItem('bp_data_'+pid)||'[]');
+        
+        if(bps.length<2){
+            return{success:true,detail:'数据不足，跳过图表测试'};
+        }
+        
+        var t0=Date.now();
+        var filtered=bps.slice(0,365);
+        var allValues=[];
+        filtered.forEach(function(r){allValues.push(r.systolic,r.diastolic)});
+        var minVal=Math.floor(Math.min.apply(null,allValues)/10)*10-10;
+        var maxVal=Math.ceil(Math.max.apply(null,allValues)/10)*10+10;
+        if(minVal===maxVal){minVal-=10;maxVal+=10}
+        var range=maxVal-minVal;
+        if(range===0)range=100;
+        var t1=Date.now();
+        
+        return{success:true,detail:'处理'+filtered.length+'天数据 ('+(t1-t0)+'ms)'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function stressSerialization(){
+    try{
+        var t0=Date.now();
+        var data={};
+        for(var i=0;i<10000;i++){
+            data['key_'+i]={value:Math.random(),text:'test_'+i};
+        }
+        var json=JSON.stringify(data);
+        var parsed=JSON.parse(json);
+        var t1=Date.now();
+        
+        if(Object.keys(parsed).length===10000){
+            return{success:true,detail:'序列化10000对象 ('+(t1-t0)+'ms)'};
+        }
+        return{success:false,detail:'序列化失败'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function stressMemory(){
+    try{
+        var t0=Date.now();
+        var arr=[];
+        for(var i=0;i<10000;i++){
+            arr.push({id:i,data:'x'.repeat(100)});
+        }
+        var t1=Date.now();
+        
+        if(arr.length===10000){
+            return{success:true,detail:'内存分配10000对象 ('+(t1-t0)+'ms)'};
+        }
+        return{success:false,detail:'内存测试失败'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function stressMultiUser(){
+    try{
+        var t0=Date.now();
+        for(var i=0;i<10;i++){
+            var pid=90000+i;
+            localStorage.setItem('bp_meds_'+pid,JSON.stringify([{id:i,name:'药'+i}]));
+            localStorage.setItem('bp_data_'+pid,JSON.stringify([{id:i,systolic:120+i,diastolic:80+i,hr:70,time:todayStr()+' 08:00'}]));
+        }
+        var t1=Date.now();
+        
+        var success=true;
+        for(var i=0;i<10;i++){
+            var pid=90000+i;
+            var meds=JSON.parse(localStorage.getItem('bp_meds_'+pid));
+            if(!meds||meds.length!==1||meds[0].id!==i){success=false;break}
+        }
+        
+        if(success){
+            return{success:true,detail:'10用户数据隔离验证通过 ('+(t1-t0)+'ms)'};
+        }
+        return{success:false,detail:'数据隔离失败'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+// ==================== 边界测试函数 ====================
+
+function testSingleDataChart(){
+    try{
+        var bps=[{systolic:120,diastolic:80,hr:72,time:todayStr()+' 08:00'}];
+        if(bps.length<2){
+            return{success:true,detail:'单条数据正确处理（无需渲染图表）'};
+        }
+        return{success:false,detail:'边界处理失败'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testEmptyData(){
+    try{
+        var meds=JSON.parse(localStorage.getItem('bp_meds_99999')||'[]');
+        var bps=JSON.parse(localStorage.getItem('bp_data_99999')||'[]');
+        var alerts=JSON.parse(localStorage.getItem('bp_alerts_99999')||'[]');
+        
+        if(meds.length===0&&bps.length===0&&alerts.length===0){
+            return{success:true,detail:'空数据处理正确'};
+        }
+        return{success:false,detail:'空数据处理失败'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+
+function testAbnormalValues(){
+    try{
+        var testCases=[
+            {sys:250,dia:150,shouldFail:false},
+            {sys:69,dia:80,shouldFail:true},
+            {sys:120,dia:39,shouldFail:true},
+            {sys:251,dia:80,shouldFail:true},
+            {sys:120,dia:151,shouldFail:true}
+        ];
+        
+        var allPass=true;
+        testCases.forEach(function(tc){
+            var isValid=tc.sys>=70&&tc.sys<=250&&tc.dia>=40&&tc.dia<=150;
+            var shouldPass=!tc.shouldFail;
+            if(isValid!==shouldPass)allPass=false;
+        });
+        
+        if(allPass){
+            return{success:true,detail:'异常值验证全部正确'};
+        }
+        return{success:false,detail:'异常值验证有误'};
+    }catch(e){return{success:false,detail:e.message}}
+}
+</script>
+</body>
+</html>

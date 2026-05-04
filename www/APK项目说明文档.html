@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>血压守护 - 安装指南</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,'Microsoft YaHei',sans-serif;background:linear-gradient(135deg,#667eea,#764ba2);min-height:100vh;padding:20px}
+.container{max-width:800px;margin:0 auto;background:#fff;border-radius:20px;padding:40px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+h1{color:#667eea;text-align:center;margin-bottom:10px;font-size:32px}
+.subtitle{text-align:center;color:#666;margin-bottom:30px}
+.card{background:#f8f9fa;border-radius:12px;padding:24px;margin-bottom:20px;border-left:4px solid #667eea}
+.card h3{color:#333;margin-bottom:12px;font-size:20px}
+.card p,.card li{color:#555;line-height:1.8;margin-bottom:8px}
+.card ol,.card ul{padding-left:20px}
+.step{display:flex;align-items:flex-start;margin-bottom:16px}
+.step-num{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:12px;font-weight:bold}
+.step-content{flex:1}
+.btn{display:inline-block;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:600;font-size:16px;margin:10px 5px;transition:transform .2s}
+.btn:hover{transform:translateY(-2px)}
+.btn-success{background:linear-gradient(135deg,#51cf66,#20c997)}
+.btn-warning{background:linear-gradient(135deg,#ff9a56,#ff5757)}
+.highlight{background:#fff3cd;padding:12px;border-radius:8px;border-left:4px solid #ffc107;margin:16px 0}
+.code{background:#f4f4f4;padding:12px;border-radius:8px;font-family:Consolas,monospace;font-size:14px;margin:12px 0;overflow-x:auto}
+footer{text-align:center;margin-top:30px;color:#999;font-size:14px}
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>📱 血压守护</h1>
+    <p class="subtitle">智能服药提醒与血压记录系统 - 安装指南</p>
+
+    <div class="card">
+        <h3>✨ 推荐方式：PWA 安装（最简单）</h3>
+        <p>无需APK文件，直接在手机浏览器中安装，像原生APP一样使用</p>
+        <br>
+        <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">双击运行 <strong>"安装到手机.bat"</strong>，启动本地服务器</div>
+        </div>
+        <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">在手机浏览器中访问：<br><strong>http://您的电脑IP:8082</strong><br>（IP地址可通过命令行运行 ipconfig 查看）</div>
+        </div>
+        <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">点击浏览器菜单中的 <strong>"添加到主屏幕"</strong></div>
+        </div>
+        <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-content">完成！现在可以在手机主屏幕找到"血压守护"图标</div>
+        </div>
+        <div class="highlight">
+            ✅ 优点：无需编译环境 | 自动更新 | 支持离线使用 | 不占用手机存储空间
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>🔧 方式二：使用 HBuilderX 云打包 APK</h3>
+        <p>适合没有Android开发环境但需要APK文件的用户</p>
+        <br>
+        <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">下载 HBuilderX：<a href="https://www.dcloud.io/hbuilderx.html" target="_blank">https://www.dcloud.io/hbuilderx.html</a></div>
+        </div>
+        <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">打开 HBuilderX，导入 <strong>www</strong> 文件夹</div>
+        </div>
+        <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">右键项目 -> <strong>发行</strong> -> <strong>原生App-云打包</strong></div>
+        </div>
+        <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-content">选择 Android，配置应用信息，点击"打包"</div>
+        </div>
+        <div class="step">
+            <div class="step-num">5</div>
+            <div class="step-content">等待云端打包完成（约3-5分钟），下载APK</div>
+        </div>
+        <div class="step">
+            <div class="step-num">6</div>
+            <div class="step-content">将APK复制到 <strong>D:\APP\血压守护.apk</strong></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>💻 方式三：使用 Android Studio 本地打包</h3>
+        <p>适合有Android开发经验的用户</p>
+        <br>
+        <div class="highlight">
+            环境要求：<br>
+            • Node.js 14+<br>
+            • Java JDK 11+<br>
+            • Android Studio
+        </div>
+        <br>
+        <p>在命令行中依次执行：</p>
+        <div class="code">
+cd E:\开发需要\blood-pressure-guardian<br>
+npm install<br>
+npx cap add android<br>
+npx cap sync android<br>
+npx cap open android
+        </div>
+        <p>在 Android Studio 中：</p>
+        <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">等待 Gradle 同步完成</div>
+        </div>
+        <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">Build -> Build Bundle/APK -> Build APK</div>
+        </div>
+        <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">APK位置：android\app\build\outputs\apk\debug\app-debug.apk</div>
+        </div>
+        <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-content">复制到 D:\APP\血压守护.apk</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>📋 应用功能</h3>
+        <ul>
+            <li>✅ 药物管理与服药提醒</li>
+            <li>✅ 血压记录与趋势图表</li>
+            <li>✅ 家庭成员协同管理</li>
+            <li>✅ 本地数据存储（离线可用）</li>
+            <li>✅ 数据导出功能</li>
+            <li>✅ 压力测试与性能优化</li>
+        </ul>
+    </div>
+
+    <div style="text-align:center;margin-top:30px">
+        <a href="./index.html" class="btn btn-success">📱 打开应用</a>
+        <a href="安装到手机.bat" class="btn">🚀 安装到手机</a>
+        <a href="BUILD_APK.bat" class="btn btn-warning">🔧 构建APK</a>
+    </div>
+
+    <footer>
+        <p>版本：2.0.0 单机版 | 血压守护 - 智能健康管理</p>
+        <p>所有数据存储在手机本地，不会上传到服务器</p>
+    </footer>
+</div>
+</body>
+</html>

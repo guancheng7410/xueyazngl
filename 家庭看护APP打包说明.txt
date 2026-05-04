@@ -1,0 +1,110 @@
+========================================
+血压守护 APK 快速构建指南
+========================================
+
+由于当前环境没有安装 Android SDK，请按以下步骤操作：
+
+方式一：使用 HBuilderX 云打包（最简单）
+========================================
+
+1. 下载 HBuilderX
+   地址：https://www.dcloud.io/hbuilderx.html
+   选择"标准版"下载
+
+2. 打开 HBuilderX
+   - 文件 -> 导入 -> 从本地目录导入
+   - 选择：E:\开发需要\blood-pressure-guardian\www
+
+3. 打包APK
+   - 右键点击 www 项目
+   - 发行 -> 原生App-云打包
+   - 配置：
+     * 平台：Android
+     * 包名：com.bloodpressureguardian.app
+     * 应用名称：血压守护
+     * 版本号：2.0.0
+   - 点击"打包"
+
+4. 等待云端打包完成（约3-5分钟）
+
+5. 下载APK
+   - 打包完成后会自动下载
+   - 将APK复制到 D:\APP\血压守护.apk
+
+6. 安装到手机
+   - 将APK发送到手机
+   - 允许安装未知来源应用
+   - 点击APK文件安装
+
+
+方式二：使用 Android Studio 本地打包
+========================================
+
+环境准备：
+---------
+1. 安装 Node.js (https://nodejs.org/)
+2. 安装 Java JDK 11+ (https://adoptium.net/)
+3. 安装 Android Studio (https://developer.android.com/studio)
+
+构建步骤：
+---------
+打开命令行，依次执行：
+
+cd E:\开发需要\blood-pressure-guardian
+
+# 安装依赖（如果未安装）
+npm install
+
+# 添加Android平台
+npx cap add android
+
+# 同步项目
+npx cap sync android
+
+# 打开Android Studio
+npx cap open android
+
+在Android Studio中：
+------------------
+1. 等待Gradle同步完成
+2. Build -> Build Bundle/APK -> Build APK
+3. 等待构建完成
+4. APK位置：android\app\build\outputs\apk\debug\app-debug.apk
+5. 复制到 D:\APP\血压守护.apk
+
+
+方式三：使用 PWA 安装（推荐）
+========================================
+
+无需APK，直接在手机浏览器中安装：
+
+1. 双击运行"安装到手机.bat"
+2. 在手机浏览器中访问显示的网址
+3. 点击"添加到主屏幕"
+4. 即可像原生APP一样使用
+
+优点：
+- 无需编译环境
+- 自动更新
+- 支持离线使用
+- 不占用手机存储空间
+
+
+常见问题
+========================================
+
+Q: 为什么不用 Cordova？
+A: Capacitor 是 Cordova 的下一代产品，性能更好
+
+Q: 打包后应用能离线使用吗？
+A: 可以，所有数据存储在本地
+
+Q: 如何更新应用？
+A: PWA方式会自动更新，APK方式需要重新打包
+
+Q: 数据安全吗？
+A: 所有数据存储在手机本地，不会上传到服务器
+
+========================================
+技术支持：如有问题请查看 INSTALL_GUIDE.md
+========================================

@@ -1,0 +1,48 @@
+{
+  "appId": "com.bloodpressureguardian.app",
+  "appName": "血压守护",
+  "webDir": "www",
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#667eea",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
+    },
+    "StatusBar": {
+      "overlaysWebView": false,
+      "backgroundColor": "#667eea",
+      "style": "LIGHTCONTENT"
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    },
+    "PushNotifications": {
+      "presentationOptions": ["badge", "sound", "alert"]
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_notify",
+      "iconColor": "#667eea",
+      "sound": "notification.wav"
+    }
+  },
+  "cordova": {
+    "preferences": {
+      "Orientation": "portrait",
+      "Fullscreen": true,
+      "BackgroundColor": "#667eea",
+      "DisallowOverscroll": true,
+      "AutoHideSplashScreen": true,
+      "SplashScreenDelay": 2000,
+      "FadeSplashScreenDuration": 300,
+      "StatusBarStyle": "blacktranslucent",
+      "StatusBarBackgroundColor": "#667eea",
+      "KeyboardResize": "true",
+      "KeyboardResizeMode": "native"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+<view class="container">
+  <view class="card">
+    <view class="card-header">
+      <view class="card-title">👨‍👩‍👧 家庭成员</view>
+      <view class="card-action" bindtap="showAddModal">+ 邀请</view>
+    </view>
+    <view class="member-item" wx:for="{{members}}" wx:key="id" bindtap="switchParent" data-id="{{item.id}}">
+      <view class="member-avatar">{{item.name}}</view>
+      <view class="member-info">
+        <view class="member-name">{{item.name}} <text class="tag tag-blue">{{item.relation}}</text></view>
+        <view class="member-detail">{{item.age}}岁 · {{item.gender}} · {{item.medCount}}种药物</view>
+      </view>
+      <view wx:if="{{item.isCurrent}}" class="tag tag-blue">当前</view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">协作日志</view>
+    <view wx:if="{{collabLogs.length > 0}}">
+      <view class="log-item" wx:for="{{collabLogs}}" wx:key="id">
+        <view class="log-action">{{item.action}}</view>
+        <view class="log-detail">{{item.detail}} · {{item.time}}</view>
+      </view>
+    </view>
+    <view wx:else class="empty-state">
+      <view class="empty-text">暂无协作日志</view>
+    </view>
+  </view>
+</view>
+
+<view wx:if="{{showModal}}" class="modal-mask" bindtap="hideAddModal">
+  <view class="modal-content" catchtap="stopPropagation">
+    <view class="modal-title">邀请家庭成员</view>
+    <view class="form-group"><view class="form-label">姓名</view><input class="form-input" value="{{form.name}}" bindinput="onNameInput" placeholder="请输入姓名" /></view>
+    <view class="form-group"><view class="form-label">关系</view><picker bindchange="onRelationChange" range="{{relations}}"><view class="form-input">{{relations[relationIndex]}}</view></picker></view>
+    <view class="form-group"><view class="form-label">年龄</view><input class="form-input" type="number" value="{{form.age}}" bindinput="onAgeInput" placeholder="请输入年龄" /></view>
+    <button class="btn" bindtap="addMember">发送邀请</button>
+    <button class="btn btn-danger" bindtap="hideAddModal">取消</button>
+  </view>
+</view>

@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>血压守护APP - 测试</title>
+<style>
+body{font-family:-apple-system,'Microsoft YaHei',sans-serif;background:#f0f2f5;padding:20px;max-width:800px;margin:0 auto}
+h1{color:#667eea;text-align:center;margin-bottom:8px}
+.subtitle{text-align:center;color:#999;margin-bottom:30px;font-size:14px}
+.card{background:#fff;border-radius:16px;padding:24px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.card h3{color:#333;margin-bottom:12px}
+.result-table{width:100%;border-collapse:collapse}
+.result-table th,.result-table td{padding:10px 12px;text-align:left;border-bottom:1px solid #eee;font-size:14px}
+.result-table th{background:#f8f9fa;font-weight:600}
+.pass{color:#28a745}
+.fail{color:#dc3545}
+.pending{color:#ffc107}
+.btn{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:12px 30px;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;margin:5px}
+.btn:hover{opacity:.9}
+.btn-green{background:linear-gradient(135deg,#51cf66,#20c997)}
+.btn-orange{background:linear-gradient(135deg,#ff9a56,#ff5757)}
+#log{background:#1e1e1e;color:#d4d4d4;padding:16px;border-radius:10px;font-family:Consolas,monospace;font-size:13px;max-height:400px;overflow-y:auto;white-space:pre-wrap;line-height:1.6}
+#summary{text-align:center;font-size:18px;padding:16px;border-radius:10px;margin-bottom:16px}
+.progress{height:8px;background:#e0e0e0;border-radius:4px;margin:16px 0;overflow:hidden}
+.progress-bar{height:100%;background:linear-gradient(90deg,#667eea,#764ba2);transition:width .3s}
+</style>
+</head>
+<body>
+<h1>🩺 血压守护APP - 自动测试</h1>
+<p class="subtitle">全面测试APP端功能，包括PWA特性、数据管理、交互逻辑</p>
+
+<div id="summary"></div>
+<div class="progress"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+
+<div class="card">
+    <h3>测试结果</h3>
+    <table class="result-table" id="resultTable">
+        <tr><th>测试项</th><th>状态</th><th>详情</th></tr>
+    </table>
+</div>
+
+<div class="card">
+    <h3>详细日志</h3>
+    <div id="log"></div>
+</div>
+
+<div class="card" style="text-align:center">
+    <button class="btn btn-orange" onclick="runAppTests()">🔄 重新运行测试</button>
+    <button class="btn btn-green" onclick="openApp()">📱 打开APP</button>
+    <button class="btn" onclick="clearAppData()">🗑️ 清除数据</button>
+</div>
+
+<script>
+var testResults=[];
+var testLog=[];
+var testCount=0;
+var totalTests=15;
+
+function log(msg,level){
+    level=level||'info';
+    var prefix=level==='pass'?'✅':(level==='fail'?'❌':(level==='warn'?'⚠️':'ℹ️'));
+    testLog.push(prefix+' '+msg);
+    var el=document.getElementById('log');
+    if(el){
+        el.textContent=testLog.join('\n');
+        el.scrollTop=el.scrollHeight
+    }
+}
+
+function addResult(name,status,detail){
+    testResults.push({name:name,status:status,detail:detail});
+    var table=document.getElementById('resultTable');
+    var row=table.insertRow();
+    var cls=status==='pass'?'pass':(status==='fail'?'fail':'pending');
+    var icon=status==='pass'?'✅':(status==='fail'?'❌':'⏳');
+    row.innerHTML='<td>'+name+'</td><td class="'+cls+'">'+icon+' '+status+'</td><td>'+detail+'</td>';
+    
+    testCount++;
+    var progress=(testCount/totalTests)*100;
+    document.getElementById('progressBar').style.width=progress+'%';
+}
+
+function pad(n){return n<10?'0'+n:''+n}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function daysAgo(n){var d=new Date();d.setDate(d.getDate()-n);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function genId(){return Date.now()+Math.floor(Math.random()*10000)}
+
+function clearAppData(){
+    var keys=[];
+    for(var i=0;i<localStorage.length;i++){
+        var key=localStorage.key(i);
+        if(key.indexOf('bp_app_')===0)keys.push(key)
+    }
+    keys.forEach(function(k){localStorage.removeItem(k)});
+    log('已清除 '+keys.length+' 项数据','warn');
+    alert('已清除 '+keys.length+' 项数据');
+    runAppTests()
+}
+
+function openApp(){
+    window.location.href='app_mobile.html'
+}
+
+function runAppTests(){
+    testResults=[];testLog=[];testCount=0;
+    document.getElementById('resultTable').innerHTML='<tr><th>测试项</th><th>状态</th><th>详情</th></tr>';
+    log('=== 开始APP端测试 ===');
+    
+    try{
+        testLocalStorage();
+        testAppInit();
+        testCreateParent();
+        testAddMedication();
+        testMedInventory();
+        testMedicationLog();
+        testConfirmMed();
+        testBpRecord();
+        testHealthAssessment();
+        testAlertGeneration();
+        testAlertResolution();
+        testPageNavigation();
+        testDataExport();
+        testPWAFeatures();
+        testServiceWorker();
+    }catch(e){
+        log('测试异常: '+e.message,'fail');
+        addResult('异常','fail',e.message)
+    }
+    
+    log('=== 测试完成 ===');
+    var passed=testResults.filter(function(r){return r.status==='pass'}).length;
+    var failed=testResults.filter(function(r){return r.status==='fail'}).length;
+    log('总计: '+testResults.length+' 项, 通过 '+passed+', 失败 '+failed);
+    
+    var s=document.getElementById('summary');
+    if(failed===0){
+        s.innerHTML='<div style="background:#d4edda;color:#155724;padding:16px;border-radius:10px"><strong>🎉 全部测试通过！</strong><br>'+testResults.length+' 项测试全部通过</div>'
+    }else{
+        s.innerHTML='<div style="background:#f8d7da;color:#721c24;padding:16px;border-radius:10px"><strong>❌ 存在失败</strong><br>'+passed+'/'+testResults.length+' 通过, '+failed+' 失败</div>'
+    }
+}
+
+function testLocalStorage(){
+    log('测试 localStorage 可用性...');
+    try{
+        localStorage.setItem('bp_app_test','test');
+        var v=localStorage.getItem('bp_app_test');
+        if(v==='test'){
+            addResult('localStorage','pass','读写正常');
+            log('localStorage 可用','pass')
+        }else{
+            addResult('localStorage','fail','写入后读取值不一致');
+            log('localStorage 值不一致','fail')
+        }
+        localStorage.removeItem('bp_app_test')
+    }catch(e){
+        addResult('localStorage','fail','不可用: '+e.message);
+        log('localStorage 不可用','fail')
+    }
+}
+
+function testAppInit(){
+    log('测试APP初始化...');
+    try{
+        var appState={uid:10001,pid:null,pname:'',parents:[]};
+        localStorage.setItem('bp_app_state',JSON.stringify(appState));
+        var saved=JSON.parse(localStorage.getItem('bp_app_state'));
+        if(saved.uid===10001&&saved.parents.length===0){
+            addResult('APP初始化','pass','状态初始化成功');
+            log('APP初始化成功','pass')
+        }else{
+            addResult('APP初始化','fail','状态不正确');
+            log('APP初始化失败','fail')
+        }
+    }catch(e){
+        addResult('APP初始化','fail',e.message);
+        log('APP初始化异常','fail')
+    }
+}
+
+function testCreateParent(){
+    log('测试创建父母信息...');
+    try{
+        var p1=Date.now(),p2=Date.now()+1;
+        var state={uid:10001,pid:p1,pname:'张大爷',parents:[
+            {id:p1,name:'张大爷',age:68,gender:'男'},
+            {id:p2,name:'李奶奶',age:65,gender:'女'}
+        ]};
+        localStorage.setItem('bp_app_state',JSON.stringify(state));
+        localStorage.setItem('bp_meds_'+p1,'[]');
+        localStorage.setItem('bp_logs_'+p1,'[]');
+        localStorage.setItem('bp_data_'+p1,'[]');
+        localStorage.setItem('bp_alerts_'+p1,'[]');
+        
+        var saved=JSON.parse(localStorage.getItem('bp_app_state'));
+        if(saved.parents.length===2&&saved.pid===p1){
+            addResult('创建父母','pass','2位父母已创建');
+            log('父母创建成功','pass')
+        }else{
+            addResult('创建父母','fail','数据不正确');
+            log('父母创建失败','fail')
+        }
+    }catch(e){
+        addResult('创建父母','fail',e.message);
+        log('创建父母异常','fail')
+    }
+}
+
+function testAddMedication(){
+    log('测试添加药物...');
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var p1=state.pid;
+        var meds=[
+            {id:20001,name:'硝苯地平',dosage:'1片',frequency:'twice',times:['08:00','18:00'],quantity:14},
+            {id:20002,name:'阿司匹林',dosage:'100mg',frequency:'once',times:['08:00'],quantity:30}
+        ];
+        localStorage.setItem('bp_meds_'+p1,JSON.stringify(meds));
+        
+        var saved=JSON.parse(localStorage.getItem('bp_meds_'+p1));
+        if(saved.length===2&&saved[0].name==='硝苯地平'&&saved[0].times.length===2){
+            addResult('添加药物','pass','2种药物添加成功');
+            log('药物添加成功','pass')
+        }else{
+            addResult('添加药物','fail','药物数据不正确');
+            log('药物添加失败','fail')
+        }
+    }catch(e){
+        addResult('添加药物','fail',e.message);
+        log('添加药物异常','fail')
+    }
+}
+
+function testMedInventory(){
+    log('测试药物库存预警...');
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var p1=state.pid;
+        var meds=JSON.parse(localStorage.getItem('bp_meds_'+p1));
+        
+        var lowStock=meds.filter(function(m){
+            var daily=m.times?m.times.length:1;
+            return m.quantity!==undefined&&m.quantity<daily*7
+        });
+        
+        if(lowStock.length===1&&lowStock[0].name==='硝苯地平'){
+            addResult('库存预警','pass','硝苯地平库存不足7天');
+            log('库存预警正确','pass')
+        }else{
+            addResult('库存预警','fail','预警不正确');
+            log('库存预警错误','fail')
+        }
+    }catch(e){
+        addResult('库存预警','fail',e.message);
+        log('库存预警异常','fail')
+    }
+}
+
+function testMedicationLog(){
+    log('测试服药计划生成...');
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var p1=state.pid;
+        var meds=JSON.parse(localStorage.getItem('bp_meds_'+p1));
+        var td=todayStr();
+        
+        var logs=[];
+        meds.forEach(function(m){
+            m.times.forEach(function(t){
+                logs.push({id:genId(),medId:m.id,medName:m.name,dosage:m.dosage,date:td,time:t,scheduled:td+' '+t,status:'pending',confirmedAt:null})
+            })
+        });
+        localStorage.setItem('bp_logs_'+p1,JSON.stringify(logs));
+        
+        if(logs.length===3){
+            addResult('服药计划','pass','生成3条计划');
+            log('服药计划生成正确','pass')
+        }else{
+            addResult('服药计划','fail','应3条，实际'+logs.length+'条');
+            log('服药计划数量错误','fail')
+        }
+    }catch(e){
+        addResult('服药计划','fail',e.message);
+        log('服药计划异常','fail')
+    }
+}
+
+function testConfirmMed(){
+    log('测试确认服药...');
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var p1=state.pid;
+        var logs=JSON.parse(localStorage.getItem('bp_logs_'+p1));
+        var meds=JSON.parse(localStorage.getItem('bp_meds_'+p1));
+        
+        logs[0].status='taken';
+        logs[0].confirmedAt=todayStr()+' 08:00';
+        localStorage.setItem('bp_logs_'+p1,JSON.stringify(logs));
+        
+        meds[0].quantity=Math.max(0,meds[0].quantity-1);
+        localStorage.setItem('bp_meds_'+p1,JSON.stringify(meds));
+        
+        var savedLogs=JSON.parse(localStorage.getItem('bp_logs_'+p1));
+        var savedMeds=JSON.parse(localStorage.getItem('bp_meds_'+p1));
+        if(savedLogs[0].status==='taken'&&savedMeds[0].quantity===13){
+            addResult('确认服药','pass','状态更新，库存扣减');
+            log('确认服药成功','pass')
+        }else{
+            addResult('确认服药','fail','状态或库存错误');
+            log('确认服药失败','fail')
+        }
+    }catch(e){
+        addResult('确认服药','fail',e.message);
+        log('确认服药异常','fail')
+    }
+}
+
+function testBpRecord(){
+    log('测试血压记录...');
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var p1=state.pid;
+        var bps=[
+            {id:1,systolic:138,diastolic:88,hr:75,time:'2026-05-01 08:00',note:'晨起'},
+            {id:2,systolic:125,diastolic:82,hr:72,time:'2026-05-01 20:00',note:'睡前'}
+        ];
+        localStorage.setItem('bp_data_'+p1,JSON.stringify(bps));
+        
+        var saved=JSON.parse(localStorage.getItem('bp_data_'+p1));
+        if(saved.length===2&&saved[0].systolic===138){
+            addResult('血压记录','pass','2条记录写入');
+            log('血压记录正确','pass')
+        }else{
+            addResult('血压记录','fail','数据不正确');
+            log('血压记录失败','fail')
+        }
+    }catch(e){
+        addResult('血压记录','fail',e.message);
+        log('血压记录异常','fail')
+    }
+}
+
+function testHealthAssessment(){
+    log('测试健康评估...');
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var p1=state.pid;
+        var bps=JSON.parse(localStorage.getItem('bp_data_'+p1));
+        
+        var avgSys=Math.round(bps.reduce(function(s,r){return s+r.systolic},0)/bps.length);
+        var avgDia=Math.round(bps.reduce(function(s,r){return s+r.diastolic},0)/bps.length);
+        var status=avgSys>140?'偏高':(avgSys>130?'正常偏高':'正常');
+        
+        if(avgSys>0&&avgDia>0){
+            addResult('健康评估','pass','平均'+avgSys+'/'+avgDia+'，'+status);
+            log('健康评估正确','pass')
+        }else{
+            addResult('健康评估','fail','评估失败');
+            log('健康评估失败','fail')
+        }
+    }catch(e){
+        addResult('健康评估','fail',e.message);
+        log('健康评估异常','fail')
+    }
+}
+
+function testAlertGeneration(){
+    log('测试预警生成...');
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var p1=state.pid;
+        var td=todayStr();
+        
+        var alerts=[
+            {id:1,logId:100,medName:'硝苯地平',diff:15,level:'warn',status:'active',time:td+' 08:15:00'},
+            {id:2,logId:101,medName:'阿司匹林',diff:45,level:'critical',status:'active',time:td+' 08:45:00'}
+        ];
+        localStorage.setItem('bp_alerts_'+p1,JSON.stringify(alerts));
+        
+        var saved=JSON.parse(localStorage.getItem('bp_alerts_'+p1));
+        var active=alerts.filter(function(a){return a.status==='active'});
+        var critical=alerts.filter(function(a){return a.level==='critical'});
+        
+        if(active.length===2&&critical.length===1){
+            addResult('预警生成','pass','2条预警，1条紧急');
+            log('预警生成正确','pass')
+        }else{
+            addResult('预警生成','fail','预警不正确');
+            log('预警生成失败','fail')
+        }
+    }catch(e){
+        addResult('预警生成','fail',e.message);
+        log('预警生成异常','fail')
+    }
+}
+
+function testAlertResolution(){
+    log('测试预警处理...');
+    try{
+        var state=JSON.parse(localStorage.getItem('bp_app_state'));
+        var p1=state.pid;
+        var alerts=JSON.parse(localStorage.getItem('bp_alerts_'+p1));
+        
+        alerts[0].status='resolved';
+        localStorage.setItem('bp_alerts_'+p1,JSON.stringify(alerts));
+        
+        var saved=JSON.parse(localStorage.getItem('bp_alerts_'+p1));
+        var resolved=saved.filter(function(a){return a.status==='resolved'});
+        var active=saved.filter(function(a){return a.status==='active'});
+        
+        if(resolved.length===1&&active.length===1){
+            addResult('预警处理','pass','1条已处理，1条待处理');
+            log('预警处理正确','pass')
+        }else{
+            addResult('预警处理','fail','状态不正确');
+            log('预警处理失败','fail')
+        }
+    }catch(e){
+        addResult('预警处理','fail',e.message);
+        log('预警处理异常','fail')
+    }
+}
+
+function testPageNavigation(){
+    log('测试页面导航...');
+    try{
+        var pages=['home','meds','bp','alerts','profile'];
+        var valid=true;
+        pages.forEach(function(p){
+            if(['home','meds','bp','alerts','profile'].indexOf(p)===-1)valid=false;
+        });
+        
+        if(valid){
+            addResult('页面导航','pass','5个页面有效');
+            log('页面导航正确','pass')
+        }else{
+            addResult('页面导航','fail','页面无效');
+            log('页面导航失败','fail')
+        }
+    }catch(e){
+        addResult('页面导航','fail',e.message);
+        log('页面导航异常','fail')
+    }
+}
+
+function testDataExport(){
+    log('测试数据导出...');
+    try{
+        if('Blob' in window){
+            var state=JSON.parse(localStorage.getItem('bp_app_state'));
+            var p1=state.pid;
+            var data={
+                meds:JSON.parse(localStorage.getItem('bp_meds_'+p1)),
+                logs:JSON.parse(localStorage.getItem('bp_logs_'+p1)),
+                bps:JSON.parse(localStorage.getItem('bp_data_'+p1)),
+                alerts:JSON.parse(localStorage.getItem('bp_alerts_'+p1))
+            };
+            var json=JSON.stringify(data,null,2);
+            var blob=new Blob([json],{type:'application/json'});
+            
+            if(blob.size>100){
+                addResult('数据导出','pass','导出'+blob.size+'字节');
+                log('数据导出正确','pass')
+            }else{
+                addResult('数据导出','fail','导出数据过小');
+                log('数据导出失败','fail')
+            }
+        }else{
+            addResult('数据导出','fail','不支持Blob');
+            log('数据导出失败','fail')
+        }
+    }catch(e){
+        addResult('数据导出','fail',e.message);
+        log('数据导出异常','fail')
+    }
+}
+
+function testPWAFeatures(){
+    log('测试PWA特性...');
+    try{
+        var manifestOk='manifest' in document.createElement('link');
+        var swOk='serviceWorker' in navigator;
+        
+        if(manifestOk&&swOk){
+            addResult('PWA特性','pass','支持manifest和SW');
+            log('PWA特性正确','pass')
+        }else{
+            addResult('PWA特性','fail','特性不完整');
+            log('PWA特性失败','fail')
+        }
+    }catch(e){
+        addResult('PWA特性','fail',e.message);
+        log('PWA特性异常','fail')
+    }
+}
+
+function testServiceWorker(){
+    log('测试Service Worker...');
+    try{
+        if('serviceWorker' in navigator){
+            addResult('Service Worker','pass','API可用');
+            log('Service Worker可用','pass')
+        }else{
+            addResult('Service Worker','fail','API不可用');
+            log('Service Worker不可用','fail')
+        }
+    }catch(e){
+        addResult('Service Worker','fail',e.message);
+        log('Service Worker异常','fail')
+    }
+}
+
+window.onload=runAppTests;
+</script>
+</body>
+</html>

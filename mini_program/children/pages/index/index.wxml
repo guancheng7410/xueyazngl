@@ -1,0 +1,68 @@
+<view class="container">
+  <view class="header">
+    <text class="title">🩺 血压守护</text>
+    <text class="subtitle">家庭协同看护</text>
+  </view>
+
+  <view class="family-selector" wx:if="{{familyGroups.length > 0}}">
+    <picker mode="selector" bindchange="onGroupChange" range="{{familyGroups}}">
+      <view class="picker">
+        当前家庭：{{currentGroup.name || '请选择'}}
+      </view>
+    </picker>
+  </view>
+
+  <view class="parents-section" wx:if="{{parents.length > 0}}">
+    <text class="section-title">👨‍👩‍👧 家庭成员</text>
+    <scroll-view scroll-x class="parents-scroll">
+      <view class="parents-list">
+        <view wx:for="{{parents}}" wx:key="id" class="parent-card {{item.id === selectedParentId ? 'active' : ''}}" bindtap="selectParent" data-id="{{item.id}}">
+          <image class="avatar" src="{{item.avatar_url || '/images/default-avatar.png'}}"></image>
+          <text class="name">{{item.name}}</text>
+          <text class="status status-{{item.health_status}}">{{item.health_status === 'normal' ? '正常' : '异常'}}</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <view class="bp-section" wx:if="{{bpAnalysis}}">
+    <text class="section-title">📊 血压分析</text>
+    <view class="bp-cards">
+      <view class="bp-card">
+        <text class="bp-value">{{bpAnalysis.average.systolic}}</text>
+        <text class="bp-label">平均收缩压</text>
+      </view>
+      <view class="bp-card">
+        <text class="bp-value">{{bpAnalysis.average.diastolic}}</text>
+        <text class="bp-label">平均舒张压</text>
+      </view>
+      <view class="bp-card">
+        <text class="bp-value">{{bpAnalysis.average.heart_rate || '--'}}</text>
+        <text class="bp-label">平均心率</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="medication-section" wx:if="{{todayLogs.length > 0}}">
+    <text class="section-title">💊 今日服药</text>
+    <view class="logs-list">
+      <view wx:for="{{todayLogs}}" wx:key="id" class="log-item">
+        <view class="log-time">{{item.scheduled_time}}</view>
+        <view class="log-status status-{{item.status}}">{{item.status === 'taken' ? '已服用' : item.status === 'pending' ? '待服用' : '漏服'}}</view>
+        <button wx:if="{{item.status === 'pending'}}" size="mini" type="primary" bindtap="confirmMedication" data-id="{{item.id}}">确认服用</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="alerts-section" wx:if="{{activeAlerts.length > 0}}">
+    <text class="section-title">⚠️ 预警信息</text>
+    <view wx:for="{{activeAlerts}}" wx:key="id" class="alert-item level-{{item.level}}">
+      <text>{{item.message}}</text>
+      <button size="mini" type="warn" bindtap="handleAlert" data-id="{{item.id}}">处理</button>
+    </view>
+  </view>
+
+  <view class="create-group" bindtap="createFamilyGroup">
+    <text>+ 创建家庭组</text>
+  </view>
+</view>

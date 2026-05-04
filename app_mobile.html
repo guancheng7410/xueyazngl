@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>血压守护APP</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#667eea">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+:root{
+    --primary:#667eea;--success:#51cf66;--warn:#ffc107;--danger:#ff5757;
+    --bg:#f0f2f5;--card:#fff;--text:#333;--text-light:#999;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);
+    -webkit-tap-highlight-color:transparent;user-select:none;overflow:hidden;height:100vh}
+
+#app{display:flex;flex-direction:column;height:100vh;max-width:100%;margin:0 auto}
+
+.page{flex:1;overflow-y:auto;padding:16px 16px 80px;display:none}
+.page.active{display:block;animation:fadeIn .3s ease}
+
+.header{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:20px 16px;border-radius:0 0 20px 20px}
+.header h1{font-size:24px;margin-bottom:8px}
+.header p{opacity:.9;font-size:14px}
+
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
+.stat-card{background:var(--card);border-radius:16px;padding:16px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.stat-num{font-size:28px;font-weight:700;color:var(--primary)}
+.stat-label{font-size:12px;color:var(--text-light);margin-top:4px}
+
+.card{background:var(--card);border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.card-title{font-size:16px;font-weight:600}
+.card-action{color:var(--primary);font-size:14px;cursor:pointer}
+
+.med-item,.bp-item,.alert-item{display:flex;align-items:center;padding:12px;border-radius:12px;background:#f8f9fa;margin-bottom:8px}
+.med-icon,.bp-icon,.alert-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-right:12px;font-size:20px}
+.med-icon.blue{background:#e3f2fd;color:#2196f3}
+.med-icon.green{background:#e8f5e9;color:#4caf50}
+.med-icon.orange{background:#fff3e0;color:#ff9800}
+.alert-icon.warn{background:#fff8e1;color:#ffc107}
+.alert-icon.critical{background:#ffebee;color:#f44336}
+
+.med-info,.bp-info,.alert-info{flex:1}
+.med-name,.bp-title,.alert-title{font-weight:600;margin-bottom:4px}
+.med-time,.bp-detail,.alert-time{font-size:12px;color:var(--text-light)}
+
+.btn{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:10px 16px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;width:100%;margin-top:12px}
+.btn:active{opacity:.9;transform:scale(.98)}
+.btn-sm{padding:6px 12px;font-size:12px;width:auto}
+.btn-danger{background:linear-gradient(135deg,#ff6b6b,#ee5a52)}
+.btn-success{background:linear-gradient(135deg,#51cf66,#20c997)}
+
+.fab{position:fixed;bottom:90px;right:16px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);
+    color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 16px rgba(102,126,234,.4);cursor:pointer;z-index:100}
+.fab:active{transform:scale(.9)}
+
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #eee;display:flex;padding:8px 0 env(safe-area-inset-bottom,8px)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 0;color:var(--text-light);cursor:pointer}
+.nav-item.active{color:var(--primary)}
+.nav-icon{font-size:22px;margin-bottom:2px}
+.nav-label{font-size:10px}
+
+.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:200}
+.modal.show{display:flex}
+.modal-content{background:#fff;border-radius:20px;padding:24px;width:90%;max-width:360px;max-height:80vh;overflow-y:auto}
+.modal-title{font-size:18px;font-weight:600;margin-bottom:16px;text-align:center}
+.form-group{margin-bottom:16px}
+.form-label{font-size:14px;color:var(--text-light);margin-bottom:6px;display:block}
+.form-input{width:100%;padding:12px;border:1px solid #e0e0e0;border-radius:10px;font-size:15px}
+.form-input:focus{border-color:var(--primary);outline:none}
+
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-light)}
+.empty-icon{font-size:60px;margin-bottom:16px}
+.empty-text{font-size:14px}
+
+.badge{background:var(--danger);color:#fff;border-radius:10px;padding:2px 6px;font-size:10px;margin-left:4px}
+
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:12px 24px;
+    border-radius:20px;font-size:14px;z-index:300;animation:slideIn .3s ease}
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideIn{from{transform:translate(-50%,-100%);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+
+.progress-bar{height:6px;background:#e0e0e0;border-radius:3px;margin:8px 0;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#667eea,#764ba2)}
+</style>
+</head>
+<body>
+<div id="app">
+    <div class="header" id="pageHeader">
+        <h1 id="pageTitle">血压守护</h1>
+        <p id="pageSubtitle">智能服药提醒</p>
+    </div>
+
+    <div class="page active" id="page-home">
+        <div class="stats-row">
+            <div class="stat-card"><div class="stat-num" id="statMeds">0</div><div class="stat-label">今日服药</div></div>
+            <div class="stat-card"><div class="stat-num" id="statCompleted">0</div><div class="stat-label">已完成</div></div>
+            <div class="stat-card"><div class="stat-num" id="statBp">--</div><div class="stat-label">最新血压</div></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">今日服药计划</div>
+                <div class="card-action" onclick="showPage('meds')">查看全部</div>
+            </div>
+            <div id="todayMeds"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">血压趋势</div>
+                <div class="card-action" onclick="showPage('bp')">记录</div>
+            </div>
+            <div id="bpChart"></div>
+            <div class="progress-bar"><div class="progress-fill" id="bpProgress" style="width:0%"></div></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">预警中心</div>
+                <div class="card-action" onclick="showPage('alerts')">查看全部<span class="badge" id="alertBadge" style="display:none">0</span></div>
+            </div>
+            <div id="alertPreview"></div>
+        </div>
+    </div>
+
+    <div class="page" id="page-meds">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">我的药物</div>
+                <div class="card-action" onclick="showAddMedModal()">+ 添加</div>
+            </div>
+            <div id="medList"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">服药记录</div>
+            </div>
+            <div id="medLogList"></div>
+        </div>
+    </div>
+
+    <div class="page" id="page-bp">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">血压记录</div>
+                <div class="card-action" onclick="showAddBpModal()">+ 记录</div>
+            </div>
+            <div id="bpList"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">健康评估</div>
+            <div id="healthAssessment" style="margin-top:12px"></div>
+        </div>
+    </div>
+
+    <div class="page" id="page-alerts">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">预警列表</div>
+            </div>
+            <div id="alertList"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">预警设置</div>
+            <div class="form-group" style="margin-top:12px">
+                <label class="form-label">一级预警（分钟）</label>
+                <input type="number" class="form-input" id="alertL1" value="10" onchange="saveAlertSettings()">
+            </div>
+            <div class="form-group">
+                <label class="form-label">二级预警（分钟）</label>
+                <input type="number" class="form-input" id="alertL2" value="25" onchange="saveAlertSettings()">
+            </div>
+            <div class="form-group">
+                <label class="form-label">紧急预警（分钟）</label>
+                <input type="number" class="form-input" id="alertL3" value="40" onchange="saveAlertSettings()">
+            </div>
+        </div>
+    </div>
+
+    <div class="page" id="page-profile">
+        <div class="card" style="text-align:center;padding:24px">
+            <div style="width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);margin:0 auto 16px;display:flex;align-items:center;justify-content:center;font-size:36px;color:#fff">👤</div>
+            <div style="font-size:18px;font-weight:600" id="profileName">未设置</div>
+            <div style="color:var(--text-light);font-size:14px;margin-top:4px" id="profileRole">家庭成员</div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">数据管理</div>
+            <button class="btn" style="margin-top:12px" onclick="exportData()">📊 导出数据</button>
+            <button class="btn btn-success" style="margin-top:8px" onclick="loadDemoData()">📋 加载演示数据</button>
+            <button class="btn btn-danger" style="margin-top:8px" onclick="clearAllData()">🗑️ 清除所有数据</button>
+        </div>
+
+        <div class="card">
+            <div class="card-title">关于</div>
+            <div style="margin-top:12px;color:var(--text-light);font-size:14px;line-height:1.8">
+                <p>版本：1.0.0</p>
+                <p>血压守护 - 智能服药提醒</p>
+                <p>支持离线使用，数据自动同步</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="fab" onclick="showQuickAction()">+</div>
+
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="showPage('home')">
+            <div class="nav-icon">🏠</div><div class="nav-label">首页</div>
+        </div>
+        <div class="nav-item" onclick="showPage('meds')">
+            <div class="nav-icon">💊</div><div class="nav-label">药物</div>
+        </div>
+        <div class="nav-item" onclick="showPage('bp')">
+            <div class="nav-icon">🩺</div><div class="nav-label">血压</div>
+        </div>
+        <div class="nav-item" onclick="showPage('alerts')">
+            <div class="nav-icon">🔔</div><div class="nav-label">预警</div>
+        </div>
+        <div class="nav-item" onclick="showPage('profile')">
+            <div class="nav-icon">👤</div><div class="nav-label">我的</div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="addMedModal">
+    <div class="modal-content">
+        <div class="modal-title">添加药物</div>
+        <div class="form-group">
+            <label class="form-label">药物名称</label>
+            <input type="text" class="form-input" id="medName" placeholder="如：硝苯地平">
+        </div>
+        <div class="form-group">
+            <label class="form-label">剂量</label>
+            <input type="text" class="form-input" id="medDosage" placeholder="如：1片、100mg">
+        </div>
+        <div class="form-group">
+            <label class="form-label">服药频次</label>
+            <select class="form-input" id="medFreq" onchange="updateMedTimes()">
+                <option value="once">每日1次</option>
+                <option value="twice">每日2次</option>
+                <option value="thrice">每日3次</option>
+            </select>
+        </div>
+        <div class="form-group" id="medTimesGroup">
+            <label class="form-label">服药时间</label>
+            <div id="medTimes"></div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">库存数量</label>
+            <input type="number" class="form-input" id="medQty" value="30" min="0">
+        </div>
+        <button class="btn" onclick="addMedication()">保存</button>
+        <button class="btn btn-danger" style="margin-top:8px" onclick="closeModal('addMedModal')">取消</button>
+    </div>
+</div>
+
+<div class="modal" id="addBpModal">
+    <div class="modal-content">
+        <div class="modal-title">记录血压</div>
+        <div class="form-group">
+            <label class="form-label">收缩压（mmHg）</label>
+            <input type="number" class="form-input" id="bpSystolic" placeholder="120" min="70" max="250">
+        </div>
+        <div class="form-group">
+            <label class="form-label">舒张压（mmHg）</label>
+            <input type="number" class="form-input" id="bpDiastolic" placeholder="80" min="40" max="150">
+        </div>
+        <div class="form-group">
+            <label class="form-label">心率（次/分钟）</label>
+            <input type="number" class="form-input" id="bpHr" placeholder="72" min="40" max="200">
+        </div>
+        <div class="form-group">
+            <label class="form-label">备注</label>
+            <input type="text" class="form-input" id="bpNote" placeholder="如：晨起、饭后">
+        </div>
+        <button class="btn" onclick="addBpRecord()">保存</button>
+        <button class="btn btn-danger" style="margin-top:8px" onclick="closeModal('addBpModal')">取消</button>
+    </div>
+</div>
+
+<script>
+var currentPage='home';
+var appState=JSON.parse(localStorage.getItem('bp_app_state')||'{"uid":null,"pid":null,"pname":"","parents":[]}');
+var meds=JSON.parse(localStorage.getItem('bp_meds_'+(appState.pid||''))||'[]');
+var logs=JSON.parse(localStorage.getItem('bp_logs_'+(appState.pid||''))||'[]');
+var bps=JSON.parse(localStorage.getItem('bp_data_'+(appState.pid||''))||'[]');
+var alerts=JSON.parse(localStorage.getItem('bp_alerts_'+(appState.pid||''))||'[]');
+
+function pad(n){return n<10?'0'+n:''+n}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function nowStr(){var d=new Date();return todayStr()+' '+pad(d.getHours())+':'+pad(d.getMinutes())}
+function genId(){return Date.now()+Math.floor(Math.random()*10000)}
+
+function init(){
+    updateMedTimes();
+    loadAlertSettings();
+    renderAll();
+    startAlertCheck();
+}
+
+function renderAll(){
+    renderHome();
+    renderMeds();
+    renderBp();
+    renderAlerts();
+    renderProfile();
+}
+
+function showPage(name){
+    document.querySelectorAll('.page').forEach(function(p){p.classList.remove('active')});
+    document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active')});
+    document.getElementById('page-'+name).classList.add('active');
+    var navItems=document.querySelectorAll('.nav-item');
+    var navMap={home:0,meds:1,bp:2,alerts:3,profile:4};
+    if(navMap[name]!==undefined)navItems[navMap[name]].classList.add('active');
+    
+    var titles={home:'血压守护',meds:'药物管理',bp:'血压记录',alerts:'预警中心',profile:'个人中心'};
+    document.getElementById('pageTitle').textContent=titles[name]||'血压守护';
+    currentPage=name;
+}
+
+function renderHome(){
+    var td=todayStr();
+    var todayLogs=logs.filter(function(l){return l.date===td});
+    var taken=todayLogs.filter(function(l){return l.status==='taken'}).length;
+    document.getElementById('statMeds').textContent=todayLogs.length;
+    document.getElementById('statCompleted').textContent=taken;
+    
+    var latestBp=bps.length>0?bps[0]:null;
+    document.getElementById('statBp').textContent=latestBp?(latestBp.systolic+'/'+latestBp.diastolic):'--';
+    
+    var medHtml='';
+    var todayMeds=generateTodayMeds();
+    if(todayMeds.length===0){
+        medHtml='<div class="empty-state"><div class="empty-icon">💊</div><div class="empty-text">暂无服药计划</div></div>';
+    }else{
+        todayMeds.slice(0,5).forEach(function(m){
+            var icon=m.status==='taken'?'med-icon green':(m.status==='missed'?'med-icon orange':'med-icon blue');
+            var symbol=m.status==='taken'?'✓':(m.status==='missed'?'✗':'⏰');
+            medHtml+='<div class="med-item"><div class="'+icon+'">'+symbol+'</div><div class="med-info"><div class="med-name">'+m.medName+'</div><div class="med-time">'+m.time+' · '+m.dosage+'</div></div>'+(m.status==='pending'?'<button class="btn btn-sm btn-success" onclick="confirmMed(\''+m.id+'\')">确认</button>':'')+'</div>';
+        });
+    }
+    document.getElementById('todayMeds').innerHTML=medHtml;
+    
+    var bpHtml='';
+    if(bps.length>0){
+        var last3=bps.slice(0,3);
+        bpHtml='<div style="font-size:14px;color:var(--text-light);margin-bottom:8px">最近记录</div>';
+        last3.forEach(function(r){
+            bpHtml+='<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;font-size:13px"><span>'+r.time+'</span><span style="color:'+(r.systolic>140?'var(--danger)':'var(--success)')+'">'+r.systolic+'/'+r.diastolic+'</span></div>';
+        });
+    }else{
+        bpHtml='<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-text">暂无血压数据</div></div>';
+    }
+    document.getElementById('bpChart').innerHTML=bpHtml;
+    document.getElementById('bpProgress').style.width=Math.min(bps.length*10,100)+'%';
+    
+    var activeAlerts=alerts.filter(function(a){return a.status==='active'});
+    if(activeAlerts.length>0){
+        document.getElementById('alertBadge').style.display='inline-block';
+        document.getElementById('alertBadge').textContent=activeAlerts.length;
+        var a=activeAlerts[0];
+        document.getElementById('alertPreview').innerHTML='<div class="alert-item"><div class="alert-icon '+(a.level==='critical'?'critical':'warn')+'">⚠️</div><div class="alert-info"><div class="alert-title">'+a.medName+'</div><div class="alert-time">超时'+a.diff+'分钟</div></div></div>';
+    }else{
+        document.getElementById('alertBadge').style.display='none';
+        document.getElementById('alertPreview').innerHTML='<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">暂无预警</div></div>';
+    }
+}
+
+function generateTodayMeds(){
+    var td=todayStr();
+    var todayMeds=[];
+    meds.forEach(function(m){
+        m.times.forEach(function(t){
+            var log=logs.find(function(l){return l.medId===m.id&&l.date===td&&l.time===t});
+            todayMeds.push({id:log?log.id:genId(),medId:m.id,medName:m.name,time:t,dosage:m.dosage,status:log?log.status:'pending'});
+        });
+    });
+    todayMeds.sort(function(a,b){return a.time<b.time?-1:1});
+    return todayMeds;
+}
+
+function renderMeds(){
+    var medHtml='';
+    if(meds.length===0){
+        medHtml='<div class="empty-state"><div class="empty-icon">💊</div><div class="empty-text">暂无药物，请点击右上角添加</div></div>';
+    }else{
+        meds.forEach(function(m){
+            var daily=m.times?m.times.length:1;
+            var daysLeft=m.quantity!==undefined?Math.floor(m.quantity/daily):99;
+            var warnClass=daysLeft<7?'med-icon orange':'med-icon blue';
+            medHtml+='<div class="med-item"><div class="'+warnClass+'">💊</div><div class="med-info"><div class="med-name">'+m.name+' '+m.dosage+'</div><div class="med-time">'+m.times.join(', ')+' · 剩余'+daysLeft+'天</div></div><button class="btn btn-sm btn-danger" onclick="deleteMed('+m.id+')">删除</button></div>';
+        });
+    }
+    document.getElementById('medList').innerHTML=medHtml;
+    
+    var logHtml='';
+    var sortedLogs=logs.slice().sort(function(a,b){return a.scheduled<b.scheduled?1:-1}).slice(0,10);
+    if(sortedLogs.length===0){
+        logHtml='<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">暂无服药记录</div></div>';
+    }else{
+        sortedLogs.forEach(function(l){
+            var statusClass=l.status==='taken'?'med-icon green':(l.status==='missed'?'med-icon orange':'med-icon blue');
+            var statusText=l.status==='taken'?'已服':(l.status==='missed'?'漏服':'待服');
+            logHtml+='<div class="med-item"><div class="'+statusClass+'">'+(l.status==='taken'?'✓':(l.status==='missed'?'✗':'⏰'))+'</div><div class="med-info"><div class="med-name">'+l.medName+'</div><div class="med-time">'+l.scheduled+' · '+statusText+'</div></div></div>';
+        });
+    }
+    document.getElementById('medLogList').innerHTML=logHtml;
+}
+
+function renderBp(){
+    var bpHtml='';
+    if(bps.length===0){
+        bpHtml='<div class="empty-state"><div class="empty-icon">🩺</div><div class="empty-text">暂无血压记录，请添加</div></div>';
+    }else{
+        bps.slice(0,10).forEach(function(r){
+            var color=r.systolic>140?'var(--danger)':(r.systolic>130?'var(--warn)':'var(--success)');
+            var level=r.systolic>140?'偏高':(r.systolic>130?'正常偏高':'正常');
+            bpHtml+='<div class="bp-item"><div class="bp-icon" style="background:'+color+'20;color:'+color+'">🩺</div><div class="bp-info"><div class="bp-title">'+r.systolic+'/'+r.diastolic+' mmHg · '+level+'</div><div class="bp-detail">'+r.time+' · 心率'+r.hr+' · '+(r.note||'')+'</div></div></div>';
+        });
+    }
+    document.getElementById('bpList').innerHTML=bpHtml;
+    
+    var assessHtml='';
+    if(bps.length>=3){
+        var avgSys=Math.round(bps.slice(0,7).reduce(function(s,r){return s+r.systolic},0)/Math.min(bps.length,7));
+        var avgDia=Math.round(bps.slice(0,7).reduce(function(s,r){return s+r.diastolic},0)/Math.min(bps.length,7));
+        var status=avgSys>140?'偏高':(avgSys>130?'正常偏高':'正常');
+        var statusColor=avgSys>140?'var(--danger)':(avgSys>130?'var(--warn)':'var(--success)');
+        assessHtml='<div style="text-align:center"><div style="font-size:32px;font-weight:700;color:'+statusColor+'">'+avgSys+'/'+avgDia+'</div><div style="color:var(--text-light);font-size:14px;margin-top:4px">近7天平均 · '+status+'</div></div>';
+    }else{
+        assessHtml='<div class="empty-state"><div class="empty-text">记录至少3次血压后可查看评估</div></div>';
+    }
+    document.getElementById('healthAssessment').innerHTML=assessHtml;
+}
+
+function renderAlerts(){
+    var alertHtml='';
+    var sortedAlerts=alerts.slice().sort(function(a,b){return a.time<b.time?1:-1});
+    if(sortedAlerts.length===0){
+        alertHtml='<div class="empty-state"><div class="empty-icon">🔔</div><div class="empty-text">暂无预警</div></div>';
+    }else{
+        sortedAlerts.forEach(function(a){
+            var iconClass=a.level==='critical'?'critical':'warn';
+            var levelText=a.level==='critical'?'紧急':(a.level==='urgent'?'重要':'预警');
+            var statusText=a.status==='active'?'未处理':'已处理';
+            alertHtml+='<div class="alert-item"><div class="alert-icon '+iconClass+'">⚠️</div><div class="alert-info"><div class="alert-title">'+a.medName+' · '+levelText+'</div><div class="alert-time">'+a.time+' · 超时'+a.diff+'分钟 · '+statusText+'</div></div>'+(a.status==='active'?'<button class="btn btn-sm" onclick="resolveAlert('+a.id+')">处理</button>':'')+'</div>';
+        });
+    }
+    document.getElementById('alertList').innerHTML=alertHtml;
+}
+
+function renderProfile(){
+    document.getElementById('profileName').textContent=appState.pname||'未设置';
+    document.getElementById('profileRole').textContent=appState.parents.length>0?'家庭成员':'未加入家庭';
+}
+
+function showAddMedModal(){
+    document.getElementById('addMedModal').classList.add('show');
+    document.getElementById('medName').value='';
+    document.getElementById('medDosage').value='';
+    document.getElementById('medQty').value='30';
+    document.getElementById('medFreq').value='once';
+    updateMedTimes();
+}
+
+function updateMedTimes(){
+    var freq=document.getElementById('medFreq').value;
+    var count=freq==='once'?1:(freq==='twice'?2:3);
+    var defaultTimes=['08:00','12:00','20:00'];
+    var html='';
+    for(var i=0;i<count;i++){
+        html+='<input type="time" class="form-input med-time-input" value="'+defaultTimes[i]+'" style="margin-bottom:8px">';
+    }
+    document.getElementById('medTimes').innerHTML=html;
+}
+
+function addMedication(){
+    var name=document.getElementById('medName').value.trim();
+    var dosage=document.getElementById('medDosage').value.trim();
+    var qty=parseInt(document.getElementById('medQty').value)||0;
+    var times=[];
+    document.querySelectorAll('.med-time-input').forEach(function(input){if(input.value)times.push(input.value)});
+    
+    if(!name){showToast('请输入药物名称');return}
+    if(times.length===0){showToast('请设置服药时间');return}
+    
+    var newMed={id:genId(),name:name,dosage:dosage,frequency:document.getElementById('medFreq').value,times:times,quantity:qty};
+    meds.push(newMed);
+    localStorage.setItem('bp_meds_'+appState.pid,JSON.stringify(meds));
+    
+    closeModal('addMedModal');
+    renderAll();
+    showToast('药物添加成功');
+}
+
+function deleteMed(id){
+    if(confirm('确定删除该药物吗？')){
+        meds=meds.filter(function(m){return m.id!==id});
+        localStorage.setItem('bp_meds_'+appState.pid,JSON.stringify(meds));
+        renderAll();
+        showToast('药物已删除');
+    }
+}
+
+function confirmMed(logId){
+    var log=logs.find(function(l){return l.id==logId});
+    if(log){
+        log.status='taken';
+        log.confirmedAt=nowStr();
+        localStorage.setItem('bp_logs_'+appState.pid,JSON.stringify(logs));
+        
+        var med=meds.find(function(m){return m.id===log.medId});
+        if(med&&med.quantity!==undefined){
+            med.quantity=Math.max(0,med.quantity-1);
+            localStorage.setItem('bp_meds_'+appState.pid,JSON.stringify(meds));
+        }
+        renderAll();
+        showToast('已确认服药');
+    }
+}
+
+function showAddBpModal(){
+    document.getElementById('addBpModal').classList.add('show');
+    document.getElementById('bpSystolic').value='';
+    document.getElementById('bpDiastolic').value='';
+    document.getElementById('bpHr').value='';
+    document.getElementById('bpNote').value='';
+}
+
+function addBpRecord(){
+    var sys=parseInt(document.getElementById('bpSystolic').value);
+    var dia=parseInt(document.getElementById('bpDiastolic').value);
+    var hr=parseInt(document.getElementById('bpHr').value);
+    var note=document.getElementById('bpNote').value.trim();
+    
+    if(!sys||!dia){showToast('请输入血压值');return}
+    if(sys<70||sys>250||dia<40||dia>150){showToast('血压值不在正常范围');return}
+    
+    var record={id:genId(),systolic:sys,diastolic:dia,hr:hr||72,note:note,time:nowStr()};
+    bps.unshift(record);
+    bps.sort(function(a,b){return a.time<b.time?1:-1});
+    localStorage.setItem('bp_data_'+appState.pid,JSON.stringify(bps));
+    
+    closeModal('addBpModal');
+    renderAll();
+    showToast('血压记录成功');
+}
+
+function resolveAlert(id){
+    var alert=alerts.find(function(a){return a.id==id});
+    if(alert){
+        alert.status='resolved';
+        localStorage.setItem('bp_alerts_'+appState.pid,JSON.stringify(alerts));
+        renderAll();
+        showToast('预警已处理');
+    }
+}
+
+function loadAlertSettings(){
+    var settings=JSON.parse(localStorage.getItem('bp_app_alerts')||'{"l1":10,"l2":25,"l3":40}');
+    document.getElementById('alertL1').value=settings.l1;
+    document.getElementById('alertL2').value=settings.l2;
+    document.getElementById('alertL3').value=settings.l3;
+}
+
+function saveAlertSettings(){
+    var settings={
+        l1:parseInt(document.getElementById('alertL1').value)||10,
+        l2:parseInt(document.getElementById('alertL2').value)||25,
+        l3:parseInt(document.getElementById('alertL3').value)||40
+    };
+    localStorage.setItem('bp_app_alerts',JSON.stringify(settings));
+    showToast('预警设置已保存');
+}
+
+function startAlertCheck(){
+    setInterval(function(){
+        var td=todayStr();
+        var now=new Date();
+        logs.forEach(function(l){
+            if(l.date===td&&l.status==='pending'){
+                var scheduled=new Date(l.scheduled);
+                var diff=Math.floor((now-scheduled)/60000);
+                if(diff>0){
+                    var existing=alerts.find(function(a){return a.logId===l.id&&a.status==='active'});
+                    if(!existing){
+                        var settings=JSON.parse(localStorage.getItem('bp_app_alerts')||'{"l1":10,"l2":25,"l3":40}');
+                        if(diff>=settings.l1){
+                            var level=diff>=settings.l3?'critical':(diff>=settings.l2?'urgent':'warn');
+                            alerts.push({id:genId(),logId:l.id,medName:l.medName,diff:diff,level:level,status:'active',time:nowStr()});
+                            localStorage.setItem('bp_alerts_'+appState.pid,JSON.stringify(alerts));
+                            renderAll();
+                        }
+                    }
+                }
+            }
+        });
+    },60000);
+}
+
+function showQuickAction(){
+    if(currentPage==='meds'){showAddMedModal()}
+    else if(currentPage==='bp'){showAddBpModal()}
+    else{showPage('home')}
+}
+
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+
+function showToast(msg){
+    var toast=document.createElement('div');
+    toast.className='toast';
+    toast.textContent=msg;
+    document.body.appendChild(toast);
+    setTimeout(function(){toast.remove()},2000);
+}
+
+function exportData(){
+    var data={meds:meds,logs:logs,bps:bps,alerts:alerts,exportTime:nowStr()};
+    var json=JSON.stringify(data,null,2);
+    var blob=new Blob([json],{type:'application/json'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url;a.download='bp_data_'+todayStr()+'.json';a.click();
+    URL.revokeObjectURL(url);
+    showToast('数据已导出');
+}
+
+function loadDemoData(){
+    var td=todayStr();
+    var uid=10001,p1=10010,p2=10011;
+    appState={uid:uid,pid:p1,pname:'张大爷',parents:[{id:p1,name:'张大爷',age:68,gender:'男'},{id:p2,name:'李奶奶',age:65,gender:'女'}]};
+    localStorage.setItem('bp_app_state',JSON.stringify(appState));
+    
+    meds=[
+        {id:20001,name:'硝苯地平',dosage:'1片',frequency:'twice',times:['08:00','18:00'],quantity:5},
+        {id:20002,name:'阿司匹林',dosage:'100mg',frequency:'once',times:['08:00'],quantity:3},
+        {id:20003,name:'氨氯地平',dosage:'5mg',frequency:'once',times:['20:00'],quantity:30}
+    ];
+    localStorage.setItem('bp_meds_'+p1,JSON.stringify(meds));
+    
+    logs=[];
+    meds.forEach(function(m){
+        m.times.forEach(function(t){
+            var status=t<'10:00'?'taken':'pending';
+            logs.push({id:genId(),medId:m.id,medName:m.name,dosage:m.dosage,date:td,time:t,scheduled:td+' '+t,status:status,confirmedAt:status==='taken'?td+' '+t:null});
+        });
+    });
+    localStorage.setItem('bp_logs_'+p1,JSON.stringify(logs));
+    
+    bps=[];
+    for(var k=0;k<7;k++){
+        var date=new Date();date.setDate(date.getDate()-k);
+        var ds=date.getFullYear()+'-'+pad(date.getMonth()+1)+'-'+pad(date.getDate());
+        bps.push({id:genId(),systolic:135+Math.floor(Math.random()*20-10),diastolic:85+Math.floor(Math.random()*16-8),hr:68+Math.floor(Math.random()*16),note:k<3?'晨起':'睡前',time:ds+' 08:00'});
+    }
+    bps.sort(function(a,b){return a.time<b.time?1:-1});
+    localStorage.setItem('bp_data_'+p1,JSON.stringify(bps));
+    
+    alerts=[{id:genId(),logId:genId(),medName:'硝苯地平',diff:25,level:'urgent',status:'active',time:td+' 09:30:00'}];
+    localStorage.setItem('bp_alerts_'+p1,JSON.stringify(alerts));
+    
+    renderAll();
+    showToast('演示数据加载成功');
+}
+
+function clearAllData(){
+    if(confirm('确定清除所有数据吗？此操作不可恢复！')){
+        var keys=[];
+        for(var i=0;i<localStorage.length;i++){
+            var key=localStorage.key(i);
+            if(key.indexOf('bp_')===0)keys.push(key);
+        }
+        keys.forEach(function(k){localStorage.removeItem(k)});
+        location.reload();
+    }
+}
+
+if('serviceWorker' in navigator){
+    window.addEventListener('load',function(){
+        navigator.serviceWorker.register('/sw_app.js').then(function(r){
+            console.log('SW registered');
+            if(Notification.permission==='default'){
+                Notification.requestPermission();
+            }
+        }).catch(function(e){console.log('SW error',e)});
+    });
+}
+window.onload=init;
+</script>
+</body>
+</html>

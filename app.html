@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>血压守护 - APP</title>
+<style>
+:root{--primary:#667eea;--bg:#f0f2f5;--card:#fff;--text:#333;--sub:#999;--danger:#ff6b6b;--ok:#51cf66;--warn:#fab005;--radius:14px;--shadow:0 2px 12px rgba(0,0,0,.08)}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);padding-bottom:80px;min-height:100vh;-webkit-font-smoothing:antialiased}
+.header{background:linear-gradient(135deg,var(--primary),#764ba2);color:#fff;padding:16px 20px;padding-top:20px;position:sticky;top:0;z-index:100;display:flex;justify-content:space-between;align-items:center;box-shadow:0 2px 20px rgba(102,126,234,.3)}
+.header h2{font-size:1.1em;font-weight:600}
+.header .btn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 14px;border-radius:20px;font-size:13px}
+.content{padding:12px 14px}
+.card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card h3{font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.row{display:flex;gap:10px}
+.col{flex:1}
+.fld{margin-bottom:12px}
+.fld label{display:block;font-size:13px;color:var(--sub);margin-bottom:4px}
+.fld input,.fld select{width:100%;padding:11px 14px;border:1.5px solid #e8e8e8;border-radius:10px;font-size:15px;background:#fafafa;transition:border .2s}
+.fld input:focus,.fld select:focus{outline:none;border-color:var(--primary);background:#fff}
+.btn{display:block;width:100%;padding:13px;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;transition:transform .1s,opacity .15s}
+.btn:active{transform:scale(.97);opacity:.85}
+.btn-primary{background:linear-gradient(135deg,var(--primary),#764ba2);color:#fff}
+.btn-ok{background:var(--ok);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-sm{padding:8px 14px;font-size:13px;border-radius:8px;width:auto;display:inline-block}
+.btn-xs{padding:5px 10px;font-size:12px;border-radius:6px;width:auto;display:inline-block}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stat{text-align:center;background:#f5f7ff;border-radius:10px;padding:10px 4px}
+.stat .num{font-size:1.3em;font-weight:700;color:var(--primary)}
+.stat .lbl{font-size:11px;color:var(--sub)}
+.log-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f0f0f0;gap:8px}
+.log-row:last-child{border-bottom:none}
+.log-left{display:flex;align-items:center;gap:10px;flex:1}
+.log-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.dot-pending{background:var(--warn)}
+.dot-taken{background:var(--ok)}
+.dot-missed{background:var(--danger)}
+.badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;white-space:nowrap}
+.bd-pending{background:#fff3cd;color:#856404}
+.bd-taken{background:#d4edda;color:#155724}
+.bd-missed{background:#f8d7da;color:#721c24}
+.alert-box{padding:12px;border-radius:10px;margin-bottom:8px;color:#fff;font-size:14px}
+.alert-warn{background:var(--warn)}
+.alert-urgent{background:var(--danger)}
+.alert-critical{background:#b33939;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.65}}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;display:flex;border-top:1px solid #eee;padding-bottom:5px;z-index:100;box-shadow:0 -2px 10px rgba(0,0,0,.05)}
+.nav-item{flex:1;text-align:center;padding:8px 0 4px;font-size:10px;color:var(--sub);cursor:pointer;transition:color .2s}
+.nav-item.active{color:var(--primary)}
+.nav-item .ico{font-size:22px;display:block;margin-bottom:2px}
+.toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 24px;border-radius:20px;font-size:14px;z-index:999;animation:ta 2s forwards;pointer-events:none}
+@keyframes ta{0%{opacity:0;transform:translateX(-50%) translateY(-10px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:1}100%{opacity:0}}
+.empty{text-align:center;color:var(--sub);padding:30px;font-size:14px}
+.setup-stepper{display:flex;gap:8px;margin-bottom:16px}
+.step{flex:1;text-align:center;font-size:12px;color:var(--sub);position:relative}
+.step.active{color:var(--primary);font-weight:600}
+.step .circle{width:28px;height:28px;border-radius:50%;background:#e0e0e0;color:#fff;display:inline-flex;align-items:center;justify-content:center;margin-bottom:4px;font-size:13px;font-weight:700}
+.step.active .circle{background:var(--primary)}
+.step.done .circle{background:var(--ok)}
+.block{display:none}
+.block.show{display:block}
+.parent-switch{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.parent-chip{padding:8px 16px;border-radius:20px;font-size:13px;background:#e8e8e8;color:#666;cursor:pointer;transition:all .2s}
+.parent-chip.active{background:var(--primary);color:#fff}
+.parent-chip .del{margin-left:6px;font-size:11px;opacity:.6}
+.date-nav{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px}
+.date-nav .arrow{font-size:20px;cursor:pointer;padding:4px 8px;background:#f0f0f0;border-radius:8px}
+.date-nav .date-label{font-size:15px;font-weight:600}
+.export-btns{display:flex;gap:10px;margin-bottom:12px}
+.export-btns .btn{flex:1}
+.push-toggle{display:flex;align-items:center;justify-content:space-between;padding:12px 0}
+.toggle-switch{width:48px;height:26px;border-radius:13px;background:#ccc;position:relative;cursor:pointer;transition:background .2s}
+.toggle-switch.on{background:var(--ok)}
+.toggle-switch::after{content:'';position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .2s}
+.toggle-switch.on::after{transform:translateX(22px)}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h2 id="headerTitle">血压守护</h2>
+    <button class="btn btn-sm" onclick="showSetup()">设置</button>
+</div>
+
+<div class="content">
+    <div id="setupView" class="block show">
+        <div class="card">
+            <h3>初始化设置</h3>
+            <div class="setup-stepper">
+                <div class="step active" id="st1"><span class="circle">1</span>创建用户</div>
+                <div class="step" id="st2"><span class="circle">2</span>添加父母</div>
+            </div>
+            <div id="setup1">
+                <div class="fld"><label>昵称</label><input id="sName" placeholder="如：小明"></div>
+                <div class="fld"><label>手机号</label><input id="sPhone" placeholder="13800138000" type="tel"></div>
+                <button class="btn btn-primary" onclick="doCreateUser()">手动创建用户</button>
+                <div style="text-align:center;margin:16px 0;color:#999;font-size:13px">—— 或 ——</div>
+                <button class="btn btn-primary" style="background:linear-gradient(135deg,#ff9a56,#ff5757)" onclick="loadFullDemoData()">一键加载完整演示数据</button>
+            </div>
+            <div id="setup2" class="block">
+                <div class="fld"><label>父母姓名</label><input id="sParent" placeholder="如：张大爷"></div>
+                <div class="row">
+                    <div class="col"><div class="fld"><label>年龄</label><input id="sAge" type="number" value="65"></div></div>
+                    <div class="col"><div class="fld"><label>性别</label><select id="sGender"><option>男</option><option>女</option></select></div></div>
+                </div>
+                <button class="btn btn-primary" onclick="doAddParent()">完成，进入系统</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="homeView" class="block">
+        <div id="parentSwitchHome" class="parent-switch"></div>
+        <div class="card">
+            <h3>今日服药</h3>
+            <div class="stats">
+                <div class="stat"><div class="num" id="sTotal">0</div><div class="lbl">应服药</div></div>
+                <div class="stat"><div class="num" id="sTaken">0</div><div class="lbl">已服药</div></div>
+                <div class="stat"><div class="num" id="sPending">0</div><div class="lbl">待服药</div></div>
+                <div class="stat"><div class="num" id="sMissed">0</div><div class="lbl">漏服</div></div>
+            </div>
+        </div>
+        <div class="card">
+            <h3>血压概览</h3>
+            <div id="bpSummary"><div class="empty">暂无数据</div></div>
+        </div>
+        <div class="card">
+            <h3>最近服药计划</h3>
+            <div id="homeLogs"><div class="empty">暂无数据</div></div>
+        </div>
+        <div class="card">
+            <h3>预警通知</h3>
+            <div id="homeAlerts"><div class="empty">暂无预警</div></div>
+        </div>
+        <div class="card">
+            <h3>数据管理</h3>
+            <div class="export-btns">
+                <button class="btn btn-primary btn-sm" onclick="exportCSV('meds')">导出药物</button>
+                <button class="btn btn-primary btn-sm" onclick="exportCSV('logs')">导出记录</button>
+                <button class="btn btn-primary btn-sm" onclick="exportCSV('bp')">导出血压</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="logsView" class="block">
+        <div class="date-nav">
+            <span class="arrow" onclick="changeDate(-1)">&lt;</span>
+            <span class="date-label" id="dateLabel">今天</span>
+            <span class="arrow" onclick="changeDate(1)">&gt;</span>
+        </div>
+        <div class="card">
+            <h3>服药记录 <button class="btn btn-sm btn-primary" onclick="doGenerateLogs()">刷新</button></h3>
+            <div id="todayLogs"><div class="empty">暂无数据</div></div>
+        </div>
+    </div>
+
+    <div id="medView" class="block">
+        <div id="parentSwitchMed" class="parent-switch"></div>
+        <div class="card">
+            <h3>添加药物</h3>
+            <div class="fld"><label>药物名称</label><input id="mName" placeholder="硝苯地平"></div>
+            <div class="row">
+                <div class="col"><div class="fld"><label>剂量</label><input id="mDosage" placeholder="1片"></div></div>
+                <div class="col"><div class="fld"><label>频次</label><select id="mFreq"><option value="twice" selected>每日两次</option><option value="once">每日一次</option><option value="thrice">每日三次</option></select></div></div>
+            </div>
+            <div class="fld"><label>服药时间（逗号分隔）</label><input id="mTimes" placeholder="08:00, 18:00"></div>
+            <div class="fld"><label>库存数量（片/粒）</label><input id="mQty" type="number" placeholder="30"></div>
+            <div class="row" style="margin-bottom:12px">
+                <div class="col"><button class="btn btn-primary" onclick="doAddMed()">添加药物</button></div>
+                <div class="col"><button class="btn btn-primary" style="background:linear-gradient(135deg,#ff9a56,#ff5757)" onclick="loadTestData()">加载测试数据</button></div>
+            </div>
+        </div>
+        <div id="medStockAlerts"></div>
+        <div class="card">
+            <h3>药物列表</h3>
+            <div id="medList"><div class="empty">暂无药物</div></div>
+        </div>
+    </div>
+
+    <div id="bpView" class="block">
+        <div class="date-nav">
+            <span class="arrow" onclick="changeDate(-1)">&lt;</span>
+            <span class="date-label" id="bpDateLabel">今天</span>
+            <span class="arrow" onclick="changeDate(1)">&gt;</span>
+        </div>
+        <div class="card">
+            <h3>记录血压</h3>
+            <div class="row">
+                <div class="col"><div class="fld"><label>收缩压</label><input id="bpSys" type="number" placeholder="120"></div></div>
+                <div class="col"><div class="fld"><label>舒张压</label><input id="bpDia" type="number" placeholder="80"></div></div>
+            </div>
+            <div class="row">
+                <div class="col"><div class="fld"><label>心率</label><input id="bpHr" type="number" placeholder="72"></div></div>
+                <div class="col"><div class="fld"><label>备注</label><input id="bpNote" placeholder="饭后"></div></div>
+            </div>
+            <button class="btn btn-primary" onclick="doAddBp()">记录血压</button>
+        </div>
+        <div class="card"><h3>趋势</h3><div id="bpTrend"><div class="empty">暂无数据</div></div></div>
+        <div class="card"><h3>记录</h3><div id="bpRecords"><div class="empty">暂无数据</div></div></div>
+    </div>
+
+    <div id="alertView" class="block">
+        <div class="card">
+            <h3>预警列表 <button class="btn btn-sm btn-primary" onclick="doCheckAlerts()">刷新</button></h3>
+            <div id="alertList"><div class="empty">一切正常</div></div>
+        </div>
+        <div class="card">
+            <h3>预警设置</h3>
+            <div class="row">
+                <div class="col"><div class="fld"><label>一级(分钟)</label><input id="aL1" type="number" value="10"></div></div>
+                <div class="col"><div class="fld"><label>二级(分钟)</label><input id="aL2" type="number" value="25"></div></div>
+            </div>
+            <div class="fld"><label>紧急(分钟)</label><input id="aL3" type="number" value="40"></div>
+            <button class="btn btn-primary" onclick="doSaveAlerts()">保存设置</button>
+        </div>
+        <div class="card">
+            <h3>推送提醒</h3>
+            <div class="push-toggle">
+                <span>浏览器推送提醒</span>
+                <div class="toggle-switch" id="pushToggle" onclick="togglePush()"></div>
+            </div>
+            <div style="font-size:12px;color:#999">开启后，服药时间到达时浏览器会弹出通知</div>
+        </div>
+    </div>
+</div>
+
+<div class="bottom-nav" id="nav">
+    <div class="nav-item active" data-tab="home"><span class="ico">首页</span>首页</div>
+    <div class="nav-item" data-tab="logs"><span class="ico">记录</span>记录</div>
+    <div class="nav-item" data-tab="med"><span class="ico">药物</span>药物</div>
+    <div class="nav-item" data-tab="bp"><span class="ico">血压</span>血压</div>
+    <div class="nav-item" data-tab="alert"><span class="ico">预警</span>预警</div>
+</div>
+
+<script>
+(function(){
+var S={uid:null,pid:null,pname:'',parents:[]};
+var LR=localStorage;
+var viewDate=todayStr();
+
+function toast(m){var t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},2100)}
+
+function save(){LR.setItem('bp_app_state',JSON.stringify({uid:S.uid,pid:S.pid,pname:S.pname,parents:S.parents}))}
+function loadState(){var d=LR.getItem('bp_app_state');if(d){var s=JSON.parse(d);S.uid=s.uid;S.pid=s.pid;S.pname=s.pname;S.parents=s.parents||[]}}
+
+function genId(){return Date.now()+Math.floor(Math.random()*1000)}
+function todayStr(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function pad(n){return n<10?'0'+n:''+n}
+function fmtTime(h,m){return pad(h)+':'+pad(m)}
+function nowIso(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds())}
+function dateStr(d){var o=d||new Date();return o.getFullYear()+'-'+pad(o.getMonth()+1)+'-'+pad(o.getDate())}
+function fmtDateLabel(ds){var td=todayStr();if(ds===td)return'今天';var y=new Date();y.setDate(y.getDate()-1);if(ds===dateStr(y))return'昨天';var tm=new Date();tm.setDate(tm.getDate()+1);if(ds===dateStr(tm))return'明天';return ds}
+
+function getMeds(){var d=LR.getItem('bp_meds_'+S.pid);return d?JSON.parse(d):[]}
+function saveMeds(m){LR.setItem('bp_meds_'+S.pid,JSON.stringify(m))}
+function getLogs(){var d=LR.getItem('bp_logs_'+S.pid);return d?JSON.parse(d):[]}
+function saveLogs(l){LR.setItem('bp_logs_'+S.pid,JSON.stringify(l))}
+function getBps(){var d=LR.getItem('bp_data_'+S.pid);return d?JSON.parse(d):[]}
+function saveBps(b){LR.setItem('bp_data_'+S.pid,JSON.stringify(b))}
+function getAlertSet(){var d=LR.getItem('bp_app_alerts');return d?JSON.parse(d):{l1:10,l2:25,l3:40}}
+function getAlerts(){var d=LR.getItem('bp_alerts_'+S.pid);return d?JSON.parse(d):[]}
+function saveAlerts(a){LR.setItem('bp_alerts_'+S.pid,JSON.stringify(a))}
+
+function generateDailyLogs(){
+    if(!S.pid)return;
+    var meds=getMeds(),logs=getLogs(),td=todayStr();
+    var existing=logs.filter(function(l){return l.date===td});
+    if(existing.length>0)return;
+    meds.forEach(function(m){
+        if(!m.times)return;
+        m.times.forEach(function(t){
+            logs.push({id:genId(),medId:m.id,medName:m.name,dosage:m.dosage,date:td,time:t,scheduled:td+' '+t,status:'pending',confirmedAt:null})
+        })
+    })
+    saveLogs(logs)
+}
+
+function checkAlerts(){
+    var logs=getLogs(),td=todayStr(),now=new Date(),set=getAlertSet();
+    var alerts=getAlerts();
+    var pending=logs.filter(function(l){return l.status==='pending'&&l.date===td});
+    pending.forEach(function(l){
+        var parts=l.time.split(':');
+        var sched=new Date(td+'T'+l.time);
+        var diff=Math.floor((now-sched)/60000);
+        if(diff>=set.l1){
+            var existing=alerts.find(function(a){return a.logId===l.id&&a.status==='active'});
+            if(!existing){
+                var lv='warn';if(diff>=set.l3)lv='critical';else if(diff>=set.l2)lv='urgent';
+                alerts.push({id:genId(),logId:l.id,medName:l.medName,diff:diff,level:lv,status:'active',time:nowIso()})
+            }
+        }
+    })
+    saveAlerts(alerts)
+}
+
+function calcDailyConsumption(med){return (med.times||[]).length}
+function calcStockDays(med){var daily=calcDailyConsumption(med);if(daily<=0||!med.quantity||med.quantity<0)return 999;return Math.floor(med.quantity/daily)}
+
+function checkStockAlerts(){
+    if(!S.pid)return;
+    var meds=getMeds();
+    var lowStock=meds.filter(function(m){var days=calcStockDays(m);return days<7&&days!==999});
+    var container=document.getElementById('medStockAlerts');
+    if(!lowStock.length){container.innerHTML='';return}
+    var h='';
+    lowStock.forEach(function(m){
+        var days=calcStockDays(m);
+        var cls=days<=0?'alert-critical':(days<=3?'alert-urgent':'alert-warn');
+        var msg=days<=0?'已无库存':'剩余约'+days+'天';
+        var need=calcDailyConsumption(m)*7;
+        h+='<div class="alert-box '+cls+'"><strong>⚠ 库存不足</strong> '+m.name+' '+msg+'（需'+need+'/周） <button class="btn btn-xs" style="margin-left:8px;background:rgba(255,255,255,.3);color:#fff" onclick="restockMed('+m.id+')">补货</button></div>'
+    });
+    container.innerHTML=h
+}
+
+function renderParentSwitch(containerId){
+    var c=document.getElementById(containerId);
+    if(!c||!S.parents.length)return;
+    var h='';
+    S.parents.forEach(function(p){
+        var cls=p.id===S.pid?'active':'';
+        h+='<span class="parent-chip '+cls+'" onclick="switchParent('+p.id+')">'+p.name+'</span>'
+    });
+    c.innerHTML=h
+}
+
+function switchParent(pid){
+    S.pid=pid;
+    var p=S.parents.find(function(x){return x.id===pid});
+    S.pname=p?p.name:'';
+    save();
+    renderAllParentSwitches();
+    loadCurrentTab();
+    toast('已切换到 '+S.pname)
+}
+
+function renderAllParentSwitches(){renderParentSwitch('parentSwitchHome');renderParentSwitch('parentSwitchMed')}
+
+function loadCurrentTab(){
+    var active=document.querySelector('.nav-item.active');
+    if(active){switchTab(active.getAttribute('data-tab'))}
+}
+
+function enterApp(){
+    document.getElementById('setupView').classList.remove('show');
+    switchTab('home')
+}
+
+function showSetup(){
+    document.querySelectorAll('.block').forEach(function(b){b.classList.remove('show')});
+    document.getElementById('setupView').classList.add('show');
+    document.getElementById('setup1').classList.remove('block');
+    document.getElementById('setup2').classList.add('block')
+}
+
+function switchTab(t){
+    document.querySelectorAll('.block').forEach(function(b){b.classList.remove('show')});
+    var map={home:'homeView',logs:'logsView',med:'medView',bp:'bpView',alert:'alertView'};
+    if(map[t])document.getElementById(map[t]).classList.add('show');
+    document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active')});
+    var a=document.querySelector('[data-tab="'+t+'"]');if(a)a.classList.add('active');
+    document.getElementById('headerTitle').textContent=t==='home'?'血压守护':(t==='logs'?'服药记录':(t==='med'?'药物管理':(t==='bp'?'血压记录':'预警管理')));
+    renderAllParentSwitches();
+    if(t==='home')loadHome();else if(t==='logs')loadLogsTab();else if(t==='med')loadMeds();
+    else if(t==='bp')loadBps();else if(t==='alert')loadAlerts()
+}
+
+function loadHome(){
+    if(!S.pid)return;
+    generateDailyLogs();
+    var logs=getLogs(),td=todayStr();
+    var todayLogs=logs.filter(function(l){return l.date===td});
+    var a=0,b=0,c=0;
+    todayLogs.forEach(function(l){if(l.status==='taken')a++;else if(l.status==='missed')b++;else c++});
+    document.getElementById('sTotal').textContent=todayLogs.length;
+    document.getElementById('sTaken').textContent=a;
+    document.getElementById('sPending').textContent=c;
+    document.getElementById('sMissed').textContent=b;
+    renderLogList('homeLogs',todayLogs);
+    loadBpSummary();
+    checkAlerts();
+    checkStockAlerts();
+    var alerts=getAlerts().filter(function(a){return a.status==='active'});
+    var ac=document.getElementById('homeAlerts');
+    if(!alerts.length){ac.innerHTML='<div class="empty">暂无预警</div>';return}
+    var h='';alerts.forEach(function(a){
+        var lc=a.level==='warn'?'alert-warn':(a.level==='urgent'?'alert-urgent':'alert-critical');
+        var lt=a.level==='warn'?'一级':(a.level==='urgent'?'二级':'紧急');
+        h+='<div class="alert-box '+lc+'"><strong>'+lt+'预警</strong> '+a.medName+' 漏服'+a.diff+'分钟 <button class="btn btn-xs" style="margin-left:10px;background:rgba(255,255,255,.3);color:#fff" onclick="confirmLog('+a.logId+')">确认</button></div>'
+    });ac.innerHTML=h
+}
+
+function loadBpSummary(){
+    var bps=getBps();var c=document.getElementById('bpSummary');
+    if(!bps.length){c.innerHTML='<div class="empty">暂无数据</div>';return}
+    var latest=bps[bps.length-1];
+    var sc=latest.systolic>=140||latest.diastolic>=90?'bd-missed':(latest.systolic>=120||latest.diastolic>=80?'bd-pending':'bd-taken');
+    var sx=latest.systolic>=140||latest.diastolic>=90?'高血压':(latest.systolic>=120||latest.diastolic>=80?'偏高':'正常');
+    var avgS=Math.round(bps.reduce(function(s,r){return s+r.systolic},0)/bps.length);
+    var avgD=Math.round(bps.reduce(function(s,r){return s+r.diastolic},0)/bps.length);
+    c.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between"><div style="font-size:1.6em;font-weight:700">'+latest.systolic+'/'+latest.diastolic+'</div><span class="badge '+sc+'">'+sx+'</span></div><div style="font-size:13px;color:#999;margin-top:4px">平均 '+avgS+'/'+avgD+' | 共'+bps.length+'条</div>'
+}
+
+function renderLogList(id,logs){
+    var c=document.getElementById(id);if(!logs.length){c.innerHTML='<div class="empty">暂无</div>';return}
+    var h='';logs.forEach(function(l){
+        var sc=l.status==='taken'?'bd-taken':(l.status==='missed'?'bd-missed':'bd-pending');
+        var sx=l.status==='taken'?'已服':(l.status==='missed'?'漏服':'待服');
+        var dc=l.status==='taken'?'dot-taken':(l.status==='missed'?'dot-missed':'dot-pending');
+        var btn=l.status==='pending'?'<button class="btn btn-xs btn-ok" onclick="confirmLog('+l.id+')">确认</button>':'';
+        h+='<div class="log-row"><div class="log-left"><span class="log-dot '+dc+'"></span><div><div style="font-size:14px;font-weight:500">'+l.medName+'</div><div style="font-size:12px;color:#999">'+l.time+'</div></div></div><span class="badge '+sc+'">'+sx+'</span>'+btn+'</div>'
+    });c.innerHTML=h
+}
+
+window.confirmLog=function(id){
+    var logs=getLogs();var log=logs.find(function(l){return l.id===id});
+    if(log&&log.status==='pending'){
+        log.status='taken';log.confirmedAt=nowIso();saveLogs(logs);
+        var meds=getMeds();var med=meds.find(function(m){return m.id===log.medId});
+        if(med&&med.quantity!==undefined){med.quantity=Math.max(0,(med.quantity||0)-1);saveMeds(meds)}
+        toast('已确认！');loadCurrentTab();loadHome()
+    }
+}
+
+function loadLogsTab(){
+    if(!S.pid)return;generateDailyLogs();
+    var logs=getLogs();
+    var filtered=logs.filter(function(l){return l.date===viewDate});
+    document.getElementById('dateLabel').textContent=fmtDateLabel(viewDate);
+    renderLogList('todayLogs',filtered)
+}
+
+function changeDate(delta){
+    var d=new Date(viewDate.replace(/-/g,'/'));
+    d.setDate(d.getDate()+delta);
+    viewDate=dateStr(d);
+    loadLogsTab();loadBps()
+}
+
+function loadMeds(){
+    if(!S.pid)return;
+    var meds=getMeds();var c=document.getElementById('medList');
+    if(!meds.length){c.innerHTML='<div class="empty">暂无药物</div>';return}
+    var fm={once:'每日一次',twice:'每日两次',thrice:'每日三次'};var h='';
+    meds.forEach(function(m){
+        var times=m.times||[];var th=times.map(function(t){return '<span class="badge bd-pending" style="margin:2px">'+t+'</span>'}).join('');
+        var daily=times.length;
+        var stockInfo=m.quantity!==undefined&&m.quantity!==null?'<br>库存: <strong style="color:'+(m.quantity<daily*7?'#ff6b6b':'#51cf66')+'">'+m.quantity+'片</strong> (可用'+calcStockDays(m)+'天)': '';
+        var restockBtn='<button class="btn btn-xs" style="background:var(--primary);color:#fff;margin-left:6px" onclick="restockMed('+m.id+')">补</button>';
+        h+='<div class="log-row"><div><div style="font-size:14px;font-weight:500">'+m.name+'</div><div style="font-size:12px;color:#999">'+(m.dosage||'')+' | '+(fm[m.frequency]||'')+'<br>'+th+stockInfo+'</div></div><button class="btn btn-xs btn-danger" onclick="delMed('+m.id+')">删</button>'+restockBtn+'</div>'
+    });c.innerHTML=h;
+    checkStockAlerts()
+}
+
+window.delMed=function(id){
+    var meds=getMeds().filter(function(m){return m.id!==id});saveMeds(meds);toast('已删除');loadMeds()
+}
+
+window.restockMed=function(id){
+    var qty=prompt('输入补充数量（片/粒）：','30');
+    if(!qty||isNaN(qty)||parseInt(qty)<=0)return;
+    var meds=getMeds();
+    var med=meds.find(function(m){return m.id===id});
+    if(med){med.quantity=(med.quantity||0)+parseInt(qty);saveMeds(meds);toast('已补充'+qty+'片');loadMeds();checkStockAlerts()}
+}
+
+window.doAddMed=function(){
+    var t=document.getElementById('mTimes').value.trim();var ts=t.split(',').map(function(x){return x.trim()}).filter(function(x){return x});
+    var name=document.getElementById('mName').value.trim();
+    if(!name){toast('填药物名称');return}if(!ts.length){toast('填服药时间');return}
+    var qty=parseInt(document.getElementById('mQty').value)||0;
+    var meds=getMeds();
+    meds.push({id:genId(),name:name,dosage:document.getElementById('mDosage').value.trim(),frequency:document.getElementById('mFreq').value,times:ts,quantity:qty});
+    saveMeds(meds);toast('添加成功！');document.getElementById('mName').value='';document.getElementById('mTimes').value='';document.getElementById('mQty').value='';loadMeds();checkStockAlerts();loadHome()
+}
+
+function loadBps(){
+    if(!S.pid)return;
+    var bps=getBps();
+    var filtered=filterBpsByDate(bps);
+    var c=document.getElementById('bpRecords');
+    if(!filtered.length){c.innerHTML='<div class="empty">暂无数据</div>';return}
+    var h='';filtered.slice().reverse().forEach(function(r){
+        var sc=r.systolic>=140||r.diastolic>=90?'bd-missed':(r.systolic>=120||r.diastolic>=80?'bd-pending':'bd-taken');
+        var sx=r.systolic>=140||r.diastolic>=90?'高血压':(r.systolic>=120||r.diastolic>=80?'偏高':'正常');
+        h+='<div class="log-row"><div style="font-size:1.1em;font-weight:700">'+r.systolic+'/'+r.diastolic+'</div><div style="font-size:12px;color:#999">'+r.time+'</div><span class="badge '+sc+'">'+sx+'</span></div>'
+    });c.innerHTML=h;loadBpTrend(filtered)
+}
+
+function filterBpsByDate(bps){
+    if(viewDate===todayStr())return bps;
+    return bps.filter(function(r){return r.time&&r.time.indexOf(viewDate)===0})
+}
+
+function loadBpTrend(list){
+    var bps=list||getBps();var c=document.getElementById('bpTrend');if(!bps.length){c.innerHTML='<div class="empty">暂无</div>';return}
+    var latest=bps[bps.length-1];var sx=latest.systolic>=140||latest.diastolic>=90?'高血压':(latest.systolic>=120||latest.diastolic>=80?'偏高':'正常');
+    var avgS=Math.round(bps.reduce(function(s,r){return s+r.systolic},0)/bps.length);
+    var avgD=Math.round(bps.reduce(function(s,r){return s+r.diastolic},0)/bps.length);
+    var avgH=bps.filter(function(r){return r.hr}).length?Math.round(bps.filter(function(r){return r.hr}).reduce(function(s,r){return s+r.hr},0)/bps.filter(function(r){return r.hr}).length):0;
+    c.innerHTML='<div style="font-size:1.1em;margin-bottom:8px">'+sx+'</div><div class="stats"><div class="stat"><div class="num">'+bps.length+'</div><div class="lbl">记录</div></div><div class="stat"><div class="num">'+avgS+'/'+avgD+'</div><div class="lbl">均值</div></div><div class="stat"><div class="num">'+avgH+'</div><div class="lbl">心率</div></div></div><div style="margin-top:8px;font-size:13px;color:#999">最新：'+latest.systolic+'/'+latest.diastolic+'</div>'
+}
+
+window.doAddBp=function(){
+    var bps=getBps();var s=parseInt(document.getElementById('bpSys').value);var d=parseInt(document.getElementById('bpDia').value);
+    if(!s||!d){toast('填血压值');return}
+    bps.push({id:genId(),systolic:s,diastolic:d,hr:parseInt(document.getElementById('bpHr').value)||null,note:document.getElementById('bpNote').value,time:nowIso()});
+    saveBps(bps);toast('记录成功');document.getElementById('bpSys').value='';document.getElementById('bpDia').value='';loadBps();loadHome()
+}
+
+function loadAlerts(){
+    if(!S.pid)return;checkAlerts();
+    var alerts=getAlerts().filter(function(a){return a.status==='active'});var c=document.getElementById('alertList');
+    if(!alerts.length){c.innerHTML='<div class="empty">一切正常</div>';return}
+    alerts.sort(function(a,b){var o={critical:0,urgent:1,warn:2};return o[a.level]-o[b.level]});
+    var h='';alerts.forEach(function(a){
+        var lc=a.level==='warn'?'alert-warn':(a.level==='urgent'?'alert-urgent':'alert-critical');
+        var lt=a.level==='warn'?'一级':(a.level==='urgent'?'二级':'紧急');
+        h+='<div class="alert-box '+lc+'"><strong>'+lt+'预警</strong> '+a.medName+' 漏服'+a.diff+'分钟 <button class="btn btn-xs" style="margin-left:8px;background:rgba(255,255,255,.3);color:#fff" onclick="confirmLog('+a.logId+')">确认</button></div>'
+    });c.innerHTML=h;
+    var set=getAlertSet();document.getElementById('aL1').value=set.l1;document.getElementById('aL2').value=set.l2;document.getElementById('aL3').value=set.l3;
+    var pushed=LR.getItem('bp_push_enabled');
+    var toggle=document.getElementById('pushToggle');
+    if(toggle){if(pushed==='1')toggle.classList.add('on');else toggle.classList.remove('on')}
+}
+
+window.doCheckAlerts=function(){checkAlerts();loadAlerts();toast('检测完成')}
+window.doSaveAlerts=function(){var s={l1:parseInt(document.getElementById('aL1').value)||10,l2:parseInt(document.getElementById('aL2').value)||25,l3:parseInt(document.getElementById('aL3').value)||40};LR.setItem('bp_app_alerts',JSON.stringify(s));toast('已保存');loadAlerts()}
+window.doGenerateLogs=function(){generateDailyLogs();loadLogsTab();toast('刷新完成')}
+
+function exportCSV(type){
+    var csv='\ufeff',filename='';
+    if(type==='meds'){
+        var meds=getMeds();if(!meds.length){toast('无数据');return}
+        csv+='药物名称,剂量,频次,服药时间,库存\n';
+        var fm={once:'每日一次',twice:'每日两次',thrice:'每日三次'};
+        meds.forEach(function(m){csv+=m.name+','+m.dosage+','+(fm[m.frequency]||'')+','+(m.times||[]).join(';')+','+(m.quantity||0)+'\n'});
+        filename='药物清单_'+S.pname+'.csv'
+    }else if(type==='logs'){
+        var logs=getLogs();if(!logs.length){toast('无数据');return}
+        csv+='日期,时间,药物名称,剂量,状态,确认时间\n';
+        logs.sort(function(a,b){return a.scheduled<b.scheduled?1:-1}).forEach(function(l){csv+=l.date+','+l.time+','+l.medName+','+l.dosage+','+l.status+','+(l.confirmedAt||'')+'\n'});
+        filename='服药记录_'+S.pname+'.csv'
+    }else if(type==='bp'){
+        var bps=getBps();if(!bps.length){toast('无数据');return}
+        csv+='时间,收缩压,舒张压,心率,备注\n';
+        bps.forEach(function(r){csv+=r.time+','+r.systolic+','+r.diastolic+','+(r.hr||'')+','+(r.note||'')+'\n'});
+        filename='血压记录_'+S.pname+'.csv'
+    }
+    var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    var link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=filename;link.click();
+    toast('导出成功')
+}
+
+window.togglePush=function(){
+    var toggle=document.getElementById('pushToggle');
+    if(!('Notification' in window)){toast('浏览器不支持推送');return}
+    if(toggle.classList.contains('on')){
+        toggle.classList.remove('on');LR.setItem('bp_push_enabled','0');toast('已关闭推送');return
+    }
+    Notification.requestPermission().then(function(p){
+        if(p==='granted'){toggle.classList.add('on');LR.setItem('bp_push_enabled','1');toast('已开启推送')}
+        else{toast('推送被拒绝')}
+    })
+}
+
+function checkPushReminders(){
+    if(LR.getItem('bp_push_enabled')!=='1')return;
+    if(!('Notification' in window)||Notification.permission!=='granted')return;
+    var logs=getLogs(),td=todayStr(),now=new Date();
+    logs.filter(function(l){return l.status==='pending'&&l.date===td}).forEach(function(l){
+        var key='bp_notif_'+l.id;
+        if(LR.getItem(key))return;
+        var parts=l.time.split(':');
+        var sched=new Date(td+'T'+l.time);
+        var diff=Math.floor((now-sched)/60000);
+        if(diff>=0&&diff<2){
+            new Notification('血压守护',{body:'该吃 '+l.medName+' 了！('+l.time+')',icon:'💊'});
+            LR.setItem(key,'1')
+        }
+    })
+}
+
+window.showSetup=showSetup;
+window.changeDate=changeDate;
+window.switchParent=switchParent;
+window.exportCSV=exportCSV;
+window.loadFullDemoData=loadFullDemoData;
+
+function loadFullDemoData(){
+    var td=todayStr();
+    var uid=10001,p1=10010,p2=10011;
+    var m1=20001,m2=20002,m3=20003,m4=20004;
+    
+    S.uid=uid;S.pid=p1;S.pname='张大爷';
+    S.parents=[
+        {id:p1,name:'张大爷',age:68,gender:'男'},
+        {id:p2,name:'李奶奶',age:65,gender:'女'}
+    ];
+    LR.setItem('bp_app_state',JSON.stringify(S));
+    
+    var meds1=[
+        {id:m1,name:'硝苯地平',dosage:'1片',frequency:'twice',times:['08:00','18:00'],quantity:5},
+        {id:m2,name:'阿司匹林',dosage:'100mg',frequency:'once',times:['08:00'],quantity:3},
+        {id:m3,name:'氨氯地平',dosage:'5mg',frequency:'once',times:['20:00'],quantity:30}
+    ];
+    LR.setItem('bp_meds_'+p1,JSON.stringify(meds1));
+    
+    var meds2=[
+        {id:m4,name:'卡托普利',dosage:'12.5mg',frequency:'thrice',times:['07:00','12:00','19:00'],quantity:20}
+    ];
+    LR.setItem('bp_meds_'+p2,JSON.stringify(meds2));
+    
+    var logs1=[];
+    var j;
+    for(j=0;j<7;j++){
+        var date=daysAgo(j);
+        meds1.forEach(function(m){
+            m.times.forEach(function(t){
+                var status='pending';
+                if(j>0){var r=Math.random();status=r<0.7?'taken':(r<0.9?'missed':'pending')}
+                else if(t<'10:00')status='taken';
+                logs1.push({id:genId(),medId:m.id,medName:m.name,dosage:m.dosage,date:date,time:t,scheduled:date+' '+t,status:status,confirmedAt:status==='taken'?date+' '+t:null})
+            })
+        })
+    }
+    LR.setItem('bp_logs_'+p1,JSON.stringify(logs1));
+    
+    var logs2=[];
+    meds2.forEach(function(m){
+        m.times.forEach(function(t){
+            var status=t<'10:00'?'taken':'pending';
+            logs2.push({id:genId(),medId:m.id,medName:m.name,dosage:m.dosage,date:td,time:t,scheduled:td+' '+t,status:status,confirmedAt:status==='taken'?td+' '+t:null})
+        })
+    });
+    LR.setItem('bp_logs_'+p2,JSON.stringify(logs2));
+    
+    var bps1=[];
+    var k;
+    for(k=0;k<14;k++){
+        var date=daysAgo(k);
+        var h=k<7?8:16;
+        var mi=Math.floor(Math.random()*30);
+        bps1.push({id:genId(),systolic:135+Math.floor(Math.random()*20-10),diastolic:85+Math.floor(Math.random()*16-8),hr:68+Math.floor(Math.random()*16),note:k<3?'晨起':(k<6?'午饭后':'睡前'),time:date+' '+pad(h)+':'+pad(mi)})
+    }
+    bps1.sort(function(a,b){return a.time<b.time?1:-1});
+    LR.setItem('bp_data_'+p1,JSON.stringify(bps1));
+    
+    var bps2=[];
+    var l;
+    for(l=0;l<7;l++){
+        var date=daysAgo(l);
+        bps2.push({id:genId(),systolic:128+Math.floor(Math.random()*12-6),diastolic:78+Math.floor(Math.random()*10-5),hr:70+Math.floor(Math.random()*12),note:'晨起',time:date+' 08:'+pad(Math.floor(Math.random()*30))})
+    }
+    bps2.sort(function(a,b){return a.time<b.time?1:-1});
+    LR.setItem('bp_data_'+p2,JSON.stringify(bps2));
+    
+    var alerts1=[];
+    var missedLogs=logs1.filter(function(l){return l.status==='missed'});
+    missedLogs.forEach(function(l){
+        var lv=['warn','urgent','critical'][Math.floor(Math.random()*3)];
+        alerts1.push({id:genId(),logId:l.id,medName:l.medName,diff:lv==='critical'?45:(lv==='urgent'?30:15),level:lv,status:lv==='warn'?'active':'resolved',time:l.date+' 10:00:00'})
+    });
+    alerts1.push({id:genId(),logId:genId(),medName:'硝苯地平',diff:25,level:'urgent',status:'active',time:td+' 09:30:00'});
+    LR.setItem('bp_alerts_'+p1,JSON.stringify(alerts1));
+    
+    LR.setItem('bp_app_alerts',JSON.stringify({l1:10,l2:25,l3:40}));
+    LR.setItem('bp_push_enabled','0');
+    
+    toast('✅ 演示数据加载成功！');
+    
+    // 验证数据
+    var stateCheck=LR.getItem('bp_app_state');
+    var medsCheck=LR.getItem('bp_meds_'+p1);
+    var logsCheck=LR.getItem('bp_logs_'+p1);
+    var bpCheck=LR.getItem('bp_data_'+p1);
+    var alertCheck=LR.getItem('bp_alerts_'+p1);
+    
+    var verifyMsg='✅ 演示数据加载成功！\n\n';
+    verifyMsg+='数据验证：\n';
+    verifyMsg+='用户状态: '+(!stateCheck?'❌':'✅')+'\n';
+    verifyMsg+='药物数据: '+(medsCheck?JSON.parse(medsCheck).length+'种':'❌')+'\n';
+    verifyMsg+='服药记录: '+(logsCheck?JSON.parse(logsCheck).length+'条':'❌')+'\n';
+    verifyMsg+='血压记录: '+(bpCheck?JSON.parse(bpCheck).length+'条':'❌')+'\n';
+    verifyMsg+='预警记录: '+(alertCheck?JSON.parse(alertCheck).length+'条':'❌')+'\n';
+    verifyMsg+='\n点击确定进入系统';
+    alert(verifyMsg);
+    
+    setTimeout(function(){enterApp()},500)
+}
+
+window.loadTestData=function(){
+    if(!S.pid){toast('先完成初始化');return}
+    var td=todayStr();
+    var logs=getLogs().filter(function(l){return l.date!==td});
+    saveLogs(logs);
+    var meds=[
+        {id:genId(),name:'硝苯地平',dosage:'1片',frequency:'twice',times:['08:00','18:00'],quantity:5},
+        {id:genId(),name:'阿司匹林',dosage:'100mg',frequency:'once',times:['08:00'],quantity:3},
+        {id:genId(),name:'氨氯地平',dosage:'5mg',frequency:'once',times:['20:00'],quantity:30}
+    ];
+    saveMeds(meds);
+    var bps=[
+        {id:genId(),systolic:138,diastolic:88,hr:75,note:'晨起',time:nowIso()},
+        {id:genId(),systolic:145,diastolic:92,hr:78,note:'饭后',time:nowIso()},
+        {id:genId(),systolic:125,diastolic:82,hr:72,note:'睡前',time:nowIso()}
+    ];
+    saveBps(bps);
+    generateDailyLogs();
+    checkAlerts();
+    checkStockAlerts();
+    toast('测试数据已加载！');
+    loadMeds();loadHome();loadBps();loadAlerts()
+}
+
+window.doCreateUser=function(){
+    S.uid=genId();var name=document.getElementById('sName').value.trim()||'用户';toast('用户创建成功！');save();
+    document.getElementById('setup1').classList.add('block');document.getElementById('setup2').classList.remove('block');
+    document.getElementById('st1').classList.replace('active','done');document.getElementById('st2').classList.add('active')
+}
+
+window.doAddParent=function(){
+    var name=document.getElementById('sParent').value.trim();
+    if(!name){toast('填姓名');return}
+    var parent={id:genId(),name:name,age:parseInt(document.getElementById('sAge').value)||65,gender:document.getElementById('sGender').value};
+    S.parents.push(parent);
+    S.pid=parent.id;S.pname=parent.name;
+    toast('添加成功！');save();
+    document.getElementById('sParent').value='';
+    enterApp()
+}
+
+document.getElementById('nav').addEventListener('click',function(e){var t=e.target;while(t&&t!==this){if(t.classList.contains('nav-item')){var tab=t.getAttribute('data-tab');if(tab)switchTab(tab);return}t=t.parentElement}});
+
+loadState();
+if(S.uid&&S.pid)enterApp();
+var set=getAlertSet();document.getElementById('aL1').value=set.l1;document.getElementById('aL2').value=set.l2;document.getElementById('aL3').value=set.l3;
+setInterval(function(){if(S.pid){checkAlerts();checkPushReminders();loadHome()}},60000);
+})();
+</script>
+</body>
+</html>
