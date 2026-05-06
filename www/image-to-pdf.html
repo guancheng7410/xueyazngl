@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>图片合并为PDF工具</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: #fff;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #999;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .upload-area:hover, .upload-area.dragover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+        .upload-text {
+            color: #666;
+            font-size: 16px;
+        }
+        .upload-hint {
+            color: #999;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+        .image-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+        .image-item {
+            position: relative;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            background: #f8f9fa;
+        }
+        .image-item img {
+            width: 100%;
+            height: 280px;
+            object-fit: contain;
+            display: block;
+        }
+        .image-item .order-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: #667eea;
+            color: #fff;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .image-item .remove-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,0,0,0.7);
+            color: #fff;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .image-item .remove-btn:hover {
+            background: rgba(255,0,0,0.9);
+        }
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102,126,234,0.4);
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #666;
+            margin-top: 12px;
+        }
+        .btn-secondary:hover {
+            background: #eee;
+        }
+        .status {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 14px;
+            color: #666;
+        }
+        .status.success {
+            color: #51cf66;
+        }
+        .status.error {
+            color: #ff5757;
+        }
+        .progress {
+            display: none;
+            margin: 20px 0;
+        }
+        .progress-bar {
+            height: 8px;
+            background: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .progress-text {
+            text-align: center;
+            margin-top: 8px;
+            font-size: 14px;
+            color: #666;
+        }
+        #fileInput {
+            display: none;
+        }
+        .info-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        .info-card h3 {
+            font-size: 14px;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+        .info-card p {
+            font-size: 13px;
+            color: #999;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1> 图片合并为PDF</h1>
+        <p class="subtitle">上传多张图片，按顺序合并成一个PDF文档</p>
+
+        <div class="info-card">
+            <h3>📋 使用说明</h3>
+            <p>1. 点击上传区域或拖拽图片到此处<br>2. 支持JPG、PNG、WEBP等常见图片格式<br>3. 图片会按上传顺序排列，可通过拖拽调整顺序<br>4. 点击"生成PDF"按钮创建并下载PDF文档</p>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon"></div>
+            <div class="upload-text">点击上传或拖拽图片到此处</div>
+            <div class="upload-hint">支持 JPG、PNG、WEBP 等格式</div>
+        </div>
+
+        <input type="file" id="fileInput" accept="image/*" multiple>
+
+        <div class="image-list" id="imageList"></div>
+
+        <div class="progress" id="progress">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div class="progress-text" id="progressText">处理中...</div>
+        </div>
+
+        <button class="btn btn-primary" id="generateBtn" disabled onclick="generatePDF()">
+            📥 生成并下载PDF
+        </button>
+        <button class="btn btn-secondary" id="clearBtn" onclick="clearAll()">
+            🗑️ 清空所有图片
+        </button>
+
+        <div class="status" id="status"></div>
+    </div>
+
+    <script>
+        let images = [];
+        const { jsPDF } = window.jspdf;
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const imageList = document.getElementById('imageList');
+        const generateBtn = document.getElementById('generateBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const progress = document.getElementById('progress');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const status = document.getElementById('status');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+            fileInput.value = '';
+        });
+
+        function handleFiles(files) {
+            const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+            if (imageFiles.length === 0) {
+                setStatus('请上传图片文件', 'error');
+                return;
+            }
+
+            imageFiles.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    images.push({
+                        dataUrl: e.target.result,
+                        name: file.name,
+                        size: file.size
+                    });
+                    renderImages();
+                    updateButtonState();
+                };
+                reader.readAsDataURL(file);
+            });
+
+            setStatus(`已添加 ${imageFiles.length} 张图片`, 'success');
+        }
+
+        function renderImages() {
+            imageList.innerHTML = images.map((img, index) => `
+                <div class="image-item" draggable="true" data-index="${index}">
+                    <span class="order-badge">${index + 1}</span>
+                    <button class="remove-btn" onclick="removeImage(${index})">×</button>
+                    <img src="${img.dataUrl}" alt="${img.name}">
+                </div>
+            `).join('');
+
+            // Add drag and drop reordering
+            const items = imageList.querySelectorAll('.image-item');
+            items.forEach(item => {
+                item.addEventListener('dragstart', handleDragStart);
+                item.addEventListener('dragover', handleDragOver);
+                item.addEventListener('drop', handleDrop);
+                item.addEventListener('dragend', handleDragEnd);
+            });
+        }
+
+        let dragSrcIndex = null;
+
+        function handleDragStart(e) {
+            dragSrcIndex = parseInt(this.dataset.index);
+            this.style.opacity = '0.5';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const dropIndex = parseInt(this.dataset.index);
+            if (dragSrcIndex !== null && dragSrcIndex !== dropIndex) {
+                const draggedItem = images.splice(dragSrcIndex, 1)[0];
+                images.splice(dropIndex, 0, draggedItem);
+                renderImages();
+            }
+        }
+
+        function handleDragEnd(e) {
+            this.style.opacity = '1';
+        }
+
+        function removeImage(index) {
+            images.splice(index, 1);
+            renderImages();
+            updateButtonState();
+        }
+
+        function clearAll() {
+            images = [];
+            renderImages();
+            updateButtonState();
+            setStatus('已清空所有图片', '');
+        }
+
+        function updateButtonState() {
+            generateBtn.disabled = images.length === 0;
+        }
+
+        function setStatus(msg, type) {
+            status.textContent = msg;
+            status.className = 'status ' + type;
+        }
+
+        async function generatePDF() {
+            if (images.length === 0) return;
+
+            generateBtn.disabled = true;
+            progress.style.display = 'block';
+            progressFill.style.width = '0%';
+            progressText.textContent = '正在处理图片...';
+
+            try {
+                const doc = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const margin = 10;
+
+                for (let i = 0; i < images.length; i++) {
+                    progressText.textContent = `正在处理第 ${i + 1}/${images.length} 张图片...`;
+                    progressFill.style.width = `${((i + 1) / images.length) * 100}%`;
+
+                    const img = await loadImage(images[i].dataUrl);
+                    const imgWidth = img.width;
+                    const imgHeight = img.height;
+
+                    // Calculate scale to fit page
+                    const availableWidth = pageWidth - margin * 2;
+                    const availableHeight = pageHeight - margin * 2;
+                    const scaleX = availableWidth / imgWidth;
+                    const scaleY = availableHeight / imgHeight;
+                    const scale = Math.min(scaleX, scaleY);
+
+                    const finalWidth = imgWidth * scale;
+                    const finalHeight = imgHeight * scale;
+
+                    // Center image on page
+                    const x = (pageWidth - finalWidth) / 2;
+                    const y = (pageHeight - finalHeight) / 2;
+
+                    if (i > 0) {
+                        doc.addPage();
+                    }
+
+                    doc.addImage(images[i].dataUrl, 'JPEG', x, y, finalWidth, finalHeight);
+                }
+
+                progressText.textContent = '正在生成PDF文件...';
+                progressFill.style.width = '100%';
+
+                const pdfName = '电子认证业务合规告知函.pdf';
+                doc.save(pdfName);
+
+                setStatus(`✅ PDF生成成功！共 ${images.length} 页`, 'success');
+            } catch (error) {
+                console.error('Error:', error);
+                setStatus('❌ 生成PDF失败: ' + error.message, 'error');
+            } finally {
+                setTimeout(() => {
+                    progress.style.display = 'none';
+                    generateBtn.disabled = false;
+                }, 1000);
+            }
+        }
+
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = src;
+            });
+        }
+    </script>
+</body>
+</html>
