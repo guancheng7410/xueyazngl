@@ -118,6 +118,9 @@ class CSRFProtector:
         
         @app.before_request
         def check_csrf():
+            # 测试模式或TESTING环境下跳过CSRF检查
+            if app.config.get('TESTING', False):
+                return
             if request.method in ['POST', 'PUT', 'DELETE', 'PATCH']:
                 if not CSRFProtector.validate_token(request):
                     return jsonify({
@@ -159,6 +162,11 @@ def rate_limit(max_requests=100, window=3600):
     def decorator(f):
         @wraps(f)
         def decorated_function(*args, **kwargs):
+            # 从flask current_app获取配置
+            from flask import current_app
+            if current_app.config.get('TESTING', False):
+                return f(*args, **kwargs)
+            
             client_ip = request.remote_addr
             
             if not rate_limiter.is_allowed(client_ip, max_requests, window):

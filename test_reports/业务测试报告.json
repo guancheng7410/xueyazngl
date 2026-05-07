@@ -1,0 +1,257 @@
+{
+  "total": 50,
+  "passed": 50,
+  "failed": 0,
+  "results": [
+    {
+      "name": "核心文件: 应用工厂",
+      "status": "PASS",
+      "detail": "app/__init__.py"
+    },
+    {
+      "name": "核心文件: 配置模块",
+      "status": "PASS",
+      "detail": "app/config.py"
+    },
+    {
+      "name": "核心文件: 数据模型",
+      "status": "PASS",
+      "detail": "app/models.py"
+    },
+    {
+      "name": "核心文件: 认证路由",
+      "status": "PASS",
+      "detail": "app/routes/auth.py"
+    },
+    {
+      "name": "核心文件: 药物路由",
+      "status": "PASS",
+      "detail": "app/routes/medication.py"
+    },
+    {
+      "name": "核心文件: 血压路由",
+      "status": "PASS",
+      "detail": "app/routes/bp.py"
+    },
+    {
+      "name": "核心文件: 预警服务",
+      "status": "PASS",
+      "detail": "app/services/alert_service.py"
+    },
+    {
+      "name": "核心文件: 微信服务",
+      "status": "PASS",
+      "detail": "app/services/wechat_service.py"
+    },
+    {
+      "name": "核心文件: 安全模块",
+      "status": "PASS",
+      "detail": "app/security.py"
+    },
+    {
+      "name": "核心文件: 日志模块",
+      "status": "PASS",
+      "detail": "app/logger.py"
+    },
+    {
+      "name": "核心文件: 依赖列表",
+      "status": "PASS",
+      "detail": "requirements.txt"
+    },
+    {
+      "name": "核心文件: 启动脚本",
+      "status": "PASS",
+      "detail": "run.py"
+    },
+    {
+      "name": "语法: 应用工厂",
+      "status": "PASS",
+      "detail": "语法正确"
+    },
+    {
+      "name": "语法: 配置模块",
+      "status": "PASS",
+      "detail": "语法正确"
+    },
+    {
+      "name": "语法: 数据模型",
+      "status": "PASS",
+      "detail": "语法正确"
+    },
+    {
+      "name": "语法: 认证路由",
+      "status": "PASS",
+      "detail": "语法正确"
+    },
+    {
+      "name": "语法: 药物路由",
+      "status": "PASS",
+      "detail": "语法正确"
+    },
+    {
+      "name": "语法: 血压路由",
+      "status": "PASS",
+      "detail": "语法正确"
+    },
+    {
+      "name": "语法: 预警服务",
+      "status": "PASS",
+      "detail": "语法正确"
+    },
+    {
+      "name": "语法: 微信服务",
+      "status": "PASS",
+      "detail": "语法正确"
+    },
+    {
+      "name": "语法: 安全模块",
+      "status": "PASS",
+      "detail": "语法正确"
+    },
+    {
+      "name": "语法: 日志模块",
+      "status": "PASS",
+      "detail": "语法正确"
+    },
+    {
+      "name": "语法: 启动脚本",
+      "status": "PASS",
+      "detail": "语法正确"
+    },
+    {
+      "name": "数据库配置",
+      "status": "PASS",
+      "detail": "数据库配置存在"
+    },
+    {
+      "name": "密钥配置",
+      "status": "PASS",
+      "detail": "密钥配置存在"
+    },
+    {
+      "name": "APP_NAME",
+      "status": "PASS",
+      "detail": "APP_NAME配置存在"
+    },
+    {
+      "name": "VERSION配置",
+      "status": "PASS",
+      "detail": "VERSION配置存在"
+    },
+    {
+      "name": "User模型",
+      "status": "PASS",
+      "detail": "User模型定义存在"
+    },
+    {
+      "name": "FamilyMember模型",
+      "status": "PASS",
+      "detail": "FamilyMember模型定义存在"
+    },
+    {
+      "name": "Medication模型",
+      "status": "PASS",
+      "detail": "Medication模型定义存在"
+    },
+    {
+      "name": "BloodPressureRecord模型",
+      "status": "PASS",
+      "detail": "BloodPressureRecord模型定义存在"
+    },
+    {
+      "name": "Alert模型",
+      "status": "PASS",
+      "detail": "Alert模型定义存在"
+    },
+    {
+      "name": "数据库索引",
+      "status": "PASS",
+      "detail": "数据库索引定义存在"
+    },
+    {
+      "name": "关系定义",
+      "status": "PASS",
+      "detail": "关系定义存在"
+    },
+    {
+      "name": "认证路由 - Blueprint",
+      "status": "PASS",
+      "detail": "认证路由已注册Blueprint"
+    },
+    {
+      "name": "认证路由 - 路由装饰器",
+      "status": "PASS",
+      "detail": "认证路由包含路由定义"
+    },
+    {
+      "name": "药物路由 - Blueprint",
+      "status": "PASS",
+      "detail": "药物路由已注册Blueprint"
+    },
+    {
+      "name": "药物路由 - 路由装饰器",
+      "status": "PASS",
+      "detail": "药物路由包含路由定义"
+    },
+    {
+      "name": "血压路由 - Blueprint",
+      "status": "PASS",
+      "detail": "血压路由已注册Blueprint"
+    },
+    {
+      "name": "血压路由 - 路由装饰器",
+      "status": "PASS",
+      "detail": "血压路由包含路由定义"
+    },
+    {
+      "name": "预警服务 - 类定义",
+      "status": "PASS",
+      "detail": "AlertService类定义存在"
+    },
+    {
+      "name": "预警服务 - 业务逻辑",
+      "status": "PASS",
+      "detail": "包含业务方法"
+    },
+    {
+      "name": "微信服务 - 类定义",
+      "status": "PASS",
+      "detail": "WeChatService类定义存在"
+    },
+    {
+      "name": "微信服务 - API调用",
+      "status": "PASS",
+      "detail": "包含微信API调用"
+    },
+    {
+      "name": "密码加密",
+      "status": "PASS",
+      "detail": "密码加密存在"
+    },
+    {
+      "name": "CSRF防护",
+      "status": "PASS",
+      "detail": "CSRF防护存在"
+    },
+    {
+      "name": "血压记录API",
+      "status": "PASS",
+      "detail": "血压记录API存在"
+    },
+    {
+      "name": "血压分析API",
+      "status": "PASS",
+      "detail": "血压分析功能存在"
+    },
+    {
+      "name": "药物管理API",
+      "status": "PASS",
+      "detail": "药物管理API存在"
+    },
+    {
+      "name": "服药日志",
+      "status": "PASS",
+      "detail": "服药日志功能存在"
+    }
+  ]
+}

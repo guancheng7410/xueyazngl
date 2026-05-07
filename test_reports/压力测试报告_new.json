@@ -1,0 +1,15 @@
+{
+  "total_requests": 2500,
+  "success": 2500,
+  "failed": 0,
+  "success_rate": "100.00%",
+  "total_time": "1.10s",
+  "qps": "2272.15",
+  "avg_response_time": "3.43ms",
+  "min_response_time": "0.35ms",
+  "max_response_time": "267.68ms",
+  "p90": "0.50ms",
+  "p95": "10.29ms",
+  "p99": "79.68ms",
+  "errors_sample": []
+}

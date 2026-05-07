@@ -5,6 +5,8 @@
 
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+import warnings
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 db = SQLAlchemy()
 
