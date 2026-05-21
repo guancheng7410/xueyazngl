@@ -9,7 +9,9 @@ import json
 import ast
 from pathlib import Path
 
+# Apply SQLAlchemy compatibility patch for Python 3.14
 sys.path.insert(0, str(Path(__file__).parent))
+from sqlalchemy_compat import *
 
 from app import create_app
 
